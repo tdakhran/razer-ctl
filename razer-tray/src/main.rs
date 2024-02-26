@@ -2,7 +2,7 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 
-use librazer::types::{CpuBoost, GpuBoost, LogoMode, MaxFanSpeedMode};
+use librazer::types::{CpuBoost, GpuBoost, LightsAlwaysOn, LogoMode, MaxFanSpeedMode};
 use librazer::{command, device};
 
 use tao::event_loop::{ControlFlow, EventLoopBuilder};
@@ -27,9 +27,16 @@ enum PerfMode {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+struct LightsMode {
+    logo_mode: LogoMode,
+    keyboard_brightness: u8,
+    always_on: LightsAlwaysOn,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 struct DeviceState {
     perf_mode: PerfMode,
-    logo_mode: LogoMode,
+    lights_mode: LightsMode,
 }
 
 impl DeviceState {
@@ -49,11 +56,16 @@ impl DeviceState {
                 PerfMode::Custom(cpu_boost, gpu_boost, MaxFanSpeedMode::Disable)
             }
         };
-        let logo_mode = command::get_logo_mode(device)?;
+
+        let lights_mode = LightsMode {
+            logo_mode: command::get_logo_mode(device)?,
+            keyboard_brightness: command::get_keyboard_brightness(device)?,
+            always_on: command::get_lights_always_on(device)?,
+        };
 
         Ok(Self {
             perf_mode,
-            logo_mode,
+            lights_mode,
         })
     }
 
@@ -76,11 +88,14 @@ impl DeviceState {
             }
         }?;
 
-        match self.logo_mode {
+        match self.lights_mode.logo_mode {
             LogoMode::Static => command::set_logo_mode(device, LogoMode::Static),
             LogoMode::Breathing => command::set_logo_mode(device, LogoMode::Breathing),
             LogoMode::Off => command::set_logo_mode(device, LogoMode::Off),
-        }
+        }?;
+
+        command::set_keyboard_brightness(device, self.lights_mode.keyboard_brightness)?;
+        command::set_lights_always_on(device, self.lights_mode.always_on)
     }
 
     fn perf_delta(
@@ -112,7 +127,11 @@ impl Default for DeviceState {
     fn default() -> Self {
         Self {
             perf_mode: PerfMode::Balanced(FanSpeed::Auto),
-            logo_mode: LogoMode::Off,
+            lights_mode: LightsMode {
+                logo_mode: LogoMode::Off,
+                keyboard_brightness: 0,
+                always_on: LightsAlwaysOn::Disable,
+            },
         }
     }
 }
@@ -282,15 +301,18 @@ impl ProgramState {
                 event_handlers.insert(
                     event_id.clone(),
                     DeviceState {
-                        logo_mode: mode,
+                        lights_mode: LightsMode {
+                            logo_mode: mode,
+                            ..dstate.lights_mode
+                        },
                         ..*dstate
                     },
                 );
                 CheckMenuItem::with_id(
                     event_id,
                     format!("{:?}", mode),
-                    dstate.logo_mode != mode,
-                    dstate.logo_mode == mode,
+                    dstate.lights_mode.logo_mode != mode,
+                    dstate.lights_mode.logo_mode == mode,
                     None,
                 )
             })
@@ -300,6 +322,62 @@ impl ProgramState {
             "Logo",
             true,
             &modes
+                .iter()
+                .map(|i| i as &dyn IsMenuItem)
+                .collect::<Vec<_>>(),
+        )?)?;
+        menu.append(&PredefinedMenuItem::separator())?;
+
+        // lights always on
+        menu.append(&CheckMenuItem::with_id(
+            "lights_always_on",
+            "Lights always on",
+            true,
+            dstate.lights_mode.always_on == LightsAlwaysOn::Enable,
+            None,
+        ))?;
+        event_handlers.insert(
+            "lights_always_on".to_string(),
+            DeviceState {
+                lights_mode: LightsMode {
+                    always_on: match dstate.lights_mode.always_on {
+                        LightsAlwaysOn::Enable => LightsAlwaysOn::Disable,
+                        LightsAlwaysOn::Disable => LightsAlwaysOn::Enable,
+                    },
+                    ..dstate.lights_mode
+                },
+                ..*dstate
+            },
+        );
+
+        let brightness_modes: Vec<CheckMenuItem> = (0..=100)
+            .step_by(10)
+            .map(|brightness| {
+                let event_id = format!("brightness:{}", brightness);
+                event_handlers.insert(
+                    event_id.clone(),
+                    DeviceState {
+                        lights_mode: LightsMode {
+                            keyboard_brightness: brightness / 2 * 5,
+                            ..dstate.lights_mode
+                        },
+                        ..*dstate
+                    },
+                );
+                CheckMenuItem::with_id(
+                    event_id,
+                    format!("Brightness: {}", brightness),
+                    dstate.lights_mode.keyboard_brightness != brightness / 2 * 5,
+                    dstate.lights_mode.keyboard_brightness == brightness / 2 * 5,
+                    None,
+                )
+            })
+            .collect();
+
+        menu.append(&Submenu::with_items(
+            "Brightness",
+            true,
+            &brightness_modes
                 .iter()
                 .map(|i| i as &dyn IsMenuItem)
                 .collect::<Vec<_>>(),
@@ -361,7 +439,11 @@ impl ProgramState {
             }
         }
 
-        writeln!(&mut info, "Logo: {:?}", self.device_state.logo_mode)?;
+        writeln!(
+            &mut info,
+            "Logo: {:?}",
+            self.device_state.lights_mode.logo_mode
+        )?;
 
         Ok(info.trim().to_string())
     }
@@ -406,6 +488,10 @@ fn main() -> Result<()> {
     const RAZER_BLADE_16_2023_PID: u16 = 0x029f;
     let device = device::Device::new(RAZER_BLADE_16_2023_PID)?;
 
+    println!(
+        "Loading config file {}",
+        confy::get_configuration_file_path("razer-tray", None)?.display()
+    );
     let mut state = ProgramState::new(confy::load("razer-tray", None)?)?;
 
     let mut tray_icon = TrayIconBuilder::new().build()?;
@@ -419,7 +505,7 @@ fn main() -> Result<()> {
 
     event_loop.run(move |_event, _, control_flow| {
         let now = std::time::Instant::now();
-        *control_flow = ControlFlow::WaitUntil(now + std::time::Duration::from_millis(500));
+        *control_flow = ControlFlow::WaitUntil(now + std::time::Duration::from_millis(1000));
 
         if let Err(e) = (|| -> Result<()> {
             if let Ok(event) = menu_channel.try_recv() {
@@ -430,12 +516,12 @@ fn main() -> Result<()> {
                 state = update(&mut tray_icon, state.get_next_perf_mode(), &device)?;
             }
 
-            if now >  last_device_state_check_timestamp + std::time::Duration::from_secs(10)
+            if now >  last_device_state_check_timestamp + std::time::Duration::from_secs(30)
             {
                 last_device_state_check_timestamp = now;
                 let active_device_state = DeviceState::read(&device)?;
                 if active_device_state != state.device_state {
-                    eprintln!("Device state changed to {:?}, overriding", active_device_state);
+                    eprintln!("Device state changed from\n{:?} to\n{:?}\noverriding...", state.device_state, active_device_state);
                     state = update(&mut tray_icon, state.device_state, &device)?;
                 }
             }

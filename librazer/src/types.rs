@@ -59,6 +59,12 @@ pub enum LogoMode {
     Static,
 }
 
+#[derive(EnumString, ValueEnum, Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub enum LightsAlwaysOn {
+    Enable = 0x03,
+    Disable = 0x00,
+}
+
 impl TryFrom<u8> for GpuBoost {
     type Error = anyhow::Error;
 
@@ -108,6 +114,18 @@ impl TryFrom<u8> for CpuBoost {
             3 => Ok(Self::Boost),
             4 => Ok(Self::Overclock),
             _ => bail!("Failed to convert {} to CpuBoost", value),
+        }
+    }
+}
+
+impl TryFrom<u8> for LightsAlwaysOn {
+    type Error = anyhow::Error;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(LightsAlwaysOn::Disable),
+            3 => Ok(LightsAlwaysOn::Enable),
+            _ => bail!("Failed to convert {} to LightsAlwaysOn", value),
         }
     }
 }

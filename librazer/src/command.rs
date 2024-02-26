@@ -1,7 +1,8 @@
 use crate::device::Device;
 use crate::packet::Packet;
 use crate::types::{
-    Cluster, CpuBoost, FanMode, FanZone, GpuBoost, LogoMode, MaxFanSpeedMode, PerfMode,
+    Cluster, CpuBoost, FanMode, FanZone, GpuBoost, LightsAlwaysOn, LogoMode, MaxFanSpeedMode,
+    PerfMode,
 };
 
 use anyhow::{bail, ensure, Result};
@@ -186,38 +187,30 @@ pub fn set_logo_mode(device: &Device, mode: LogoMode) -> Result<()> {
     Ok(())
 }
 
-pub fn get_info(device: &Device) -> Result<String> {
-    use std::fmt::Write;
-    let mut info = String::new();
+pub fn get_keyboard_brightness(device: &Device) -> Result<u8> {
+    let response = device.send(Packet::new(0x0383, &[1, 5, 0]))?;
+    ensure!(response.get_args()[1] == 5);
+    Ok(response.get_args()[2])
+}
 
-    let (perf_mode, fan_mode) = get_perf_mode(device)?;
-    writeln!(&mut info, "Performance: {:?}", perf_mode)?;
+pub fn set_keyboard_brightness(device: &Device, brightness: u8) -> Result<()> {
+    let args = &[1, 5, brightness];
+    ensure!(device
+        .send(Packet::new(0x0303, args))?
+        .get_args()
+        .starts_with(args));
+    Ok(())
+}
 
-    if perf_mode == PerfMode::Balanced {
-        match fan_mode {
-            FanMode::Auto => writeln!(&mut info, "Fan: {:?}", fan_mode)?,
-            FanMode::Manual => writeln!(
-                &mut info,
-                "Fan: {} RPM",
-                get_fan_rpm(device, FanZone::Zone1)?
-            )?,
-        }
-    }
+pub fn get_lights_always_on(device: &Device) -> Result<LightsAlwaysOn> {
+    device.send(Packet::new(0x0084, &[0, 0]))?.get_args()[0].try_into()
+}
 
-    if perf_mode == PerfMode::Custom {
-        let cpu_boost = get_cpu_boost(device)?;
-        let gpu_boost = get_gpu_boost(device)?;
-        writeln!(&mut info, "CPU: {:?}", cpu_boost)?;
-        writeln!(&mut info, "GPU: {:?}", gpu_boost)?;
-
-        if (cpu_boost == CpuBoost::Boost || cpu_boost == CpuBoost::Overclock)
-            && (gpu_boost == GpuBoost::High)
-        {
-            // TODO: getter for max fan speed mode
-        }
-    }
-
-    write!(&mut info, "Logo: {:?}", get_logo_mode(device)?)?;
-
-    Ok(info)
+pub fn set_lights_always_on(device: &Device, lights_always_on: LightsAlwaysOn) -> Result<()> {
+    let args = &[lights_always_on as u8, 0];
+    ensure!(device
+        .send(Packet::new(0x0004, args))?
+        .get_args()
+        .starts_with(args));
+    Ok(())
 }
