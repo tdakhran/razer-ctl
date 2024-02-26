@@ -21,7 +21,7 @@ pub enum PerfMode {
     Custom = 4,
 }
 
-#[derive(Clone, Copy, Debug, ValueEnum, PartialEq)]
+#[derive(EnumIter, Clone, Copy, Debug, ValueEnum, PartialEq)]
 pub enum MaxFanSpeedMode {
     Enable = 2,
     Disable = 0,
@@ -33,7 +33,7 @@ pub enum FanMode {
     Manual = 1,
 }
 
-#[derive(Clone, Copy, Debug, ValueEnum, PartialEq)]
+#[derive(EnumIter, Clone, Copy, Debug, ValueEnum, PartialEq)]
 pub enum CpuBoost {
     Low = 0,
     Medium = 1,
@@ -42,7 +42,7 @@ pub enum CpuBoost {
     Overclock = 4,
 }
 
-#[derive(Clone, Copy, Debug, ValueEnum, PartialEq)]
+#[derive(EnumIter, Clone, Copy, Debug, ValueEnum, PartialEq)]
 pub enum GpuBoost {
     Low = 0,
     Medium = 1,

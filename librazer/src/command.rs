@@ -109,16 +109,6 @@ pub fn set_max_fan_speed_mode(device: &Device, mode: MaxFanSpeedMode) -> Result<
         "Performance mode must be {:?}",
         PerfMode::Custom
     );
-    ensure!(
-        [CpuBoost::Boost, CpuBoost::Overclock].contains(&get_cpu_boost(device)?),
-        "CPU boost must be one of {:?}",
-        [CpuBoost::Boost, CpuBoost::Overclock]
-    );
-    ensure!(
-        get_gpu_boost(device)? == GpuBoost::High,
-        "GPU boost must be {:?}",
-        GpuBoost::High
-    );
     _send_command(device, 0x070f, &[mode as u8]).map(|_| ())
 }
 
