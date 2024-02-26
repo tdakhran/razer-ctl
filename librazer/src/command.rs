@@ -60,8 +60,18 @@ pub fn get_perf_mode(device: &Device) -> Result<(PerfMode, FanMode)> {
         ))
     });
 
+    ensure!(
+        r1.is_ok() && r2.is_ok(),
+        "Failed to get performance mode and fan mode: {:?} {:?}",
+        r1,
+        r2
+    );
+
     let r1 = r1?;
-    ensure!(r1 == r2?, "Modes do not match");
+    let r2 = r2?;
+
+    //let r1 = r1?;
+    ensure!(r1 == r2, "Modes do not match: {:?} {:?}", r1, r2);
 
     Ok(r1)
 }
@@ -143,9 +153,8 @@ fn _get_logo_power(device: &Device) -> Result<bool> {
 
 fn _set_logo_mode(device: &Device, mode: LogoMode) -> Result<Packet> {
     match mode {
-        LogoMode::Static => _send_command(device, 0x0302, &[0, 4, 0]),
+        LogoMode::Static | LogoMode::Off => _send_command(device, 0x0302, &[0, 4, 0]),
         LogoMode::Breathing => _send_command(device, 0x0302, &[0, 4, 2]),
-        _ => bail!("Invalid logo mode"),
     }
 }
 
@@ -166,14 +175,9 @@ pub fn get_logo_mode(device: &Device) -> Result<LogoMode> {
 }
 
 pub fn set_logo_mode(device: &Device, mode: LogoMode) -> Result<()> {
-    match mode {
-        LogoMode::Off => _set_logo_power(device, false),
-        _ => {
-            _set_logo_power(device, true)?;
-            _set_logo_mode(device, mode)
-        }
-    }
-    .map(|_| ())
+    _set_logo_mode(device, mode)?;
+    _set_logo_power(device, mode != LogoMode::Off)?;
+    Ok(())
 }
 
 pub fn get_info(device: &Device) -> Result<String> {

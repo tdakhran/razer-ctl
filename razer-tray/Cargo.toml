@@ -5,8 +5,10 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.80"
+confy = "0.6.0"
 image = "0.24.9"
 librazer = { path = "../librazer" }
+serde = { version = "1.0.197", features = ["derive"] }
 strum = "0.26.1"
 strum_macros = "0.26.1"
 tao = "0.26.0"

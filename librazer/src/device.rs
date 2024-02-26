@@ -21,7 +21,7 @@ impl Device {
         let mut response_buf: Vec<u8> = vec![0x00; 1 + std::mem::size_of::<Packet>()];
         //println!("Report {:?}", report);
 
-        thread::sleep(time::Duration::from_millis(2));
+        thread::sleep(time::Duration::from_micros(1000));
         self.device
             .send_feature_report(
                 [0_u8; 1] // report id
@@ -33,7 +33,7 @@ impl Device {
             )
             .context("Failed to send feature report")?;
 
-        thread::sleep(time::Duration::from_millis(2));
+        thread::sleep(time::Duration::from_micros(1000));
         if response_buf.len() != self.device.get_feature_report(&mut response_buf)? {
             return Err(anyhow!("Response size != {}", response_buf.len()));
         }

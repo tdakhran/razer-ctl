@@ -1,6 +1,7 @@
 use anyhow::{bail, Result};
 use clap::ValueEnum;
 use strum_macros::{EnumIter, EnumString};
+use serde::{Serialize, Deserialize};
 
 #[derive(Clone, Copy)]
 pub enum Cluster {
@@ -21,7 +22,7 @@ pub enum PerfMode {
     Custom = 4,
 }
 
-#[derive(EnumIter, Clone, Copy, Debug, ValueEnum, PartialEq)]
+#[derive(EnumIter, Clone, Copy, Debug, ValueEnum, PartialEq, Serialize, Deserialize)]
 pub enum MaxFanSpeedMode {
     Enable = 2,
     Disable = 0,
@@ -33,7 +34,7 @@ pub enum FanMode {
     Manual = 1,
 }
 
-#[derive(EnumIter, Clone, Copy, Debug, ValueEnum, PartialEq)]
+#[derive(EnumIter, Clone, Copy, Debug, ValueEnum, PartialEq, Serialize, Deserialize)]
 pub enum CpuBoost {
     Low = 0,
     Medium = 1,
@@ -42,14 +43,14 @@ pub enum CpuBoost {
     Overclock = 4,
 }
 
-#[derive(EnumIter, Clone, Copy, Debug, ValueEnum, PartialEq)]
+#[derive(EnumIter, Clone, Copy, Debug, ValueEnum, PartialEq, Serialize, Deserialize)]
 pub enum GpuBoost {
     Low = 0,
     Medium = 1,
     High = 2,
 }
 
-#[derive(EnumString, EnumIter, Clone, Copy, Debug, ValueEnum, PartialEq)]
+#[derive(EnumString, EnumIter, Clone, Copy, Debug, ValueEnum, PartialEq, Serialize, Deserialize)]
 pub enum LogoMode {
     Off,
     Breathing,
