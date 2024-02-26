@@ -1,5 +1,6 @@
 use anyhow::{bail, Result};
 use clap::ValueEnum;
+use strum_macros::{EnumIter, EnumString};
 
 #[derive(Clone, Copy)]
 pub enum Cluster {
@@ -13,14 +14,14 @@ pub enum FanZone {
     Zone2 = 0x02,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, ValueEnum)]
+#[derive(EnumIter, Clone, Copy, Debug, PartialEq, ValueEnum)]
 pub enum PerfMode {
     Balanced = 0,
     Silent = 5,
     Custom = 4,
 }
 
-#[derive(Clone, Debug, ValueEnum)]
+#[derive(Clone, Copy, Debug, ValueEnum, PartialEq)]
 pub enum MaxFanSpeedMode {
     Enable = 2,
     Disable = 0,
@@ -48,7 +49,7 @@ pub enum GpuBoost {
     High = 2,
 }
 
-#[derive(Clone, Copy, Debug, ValueEnum, PartialEq)]
+#[derive(EnumString, EnumIter, Clone, Copy, Debug, ValueEnum, PartialEq)]
 pub enum LogoMode {
     Off,
     Breathing,

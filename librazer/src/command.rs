@@ -167,6 +167,14 @@ fn _get_logo_mode(device: &Device) -> Result<LogoMode> {
     }
 }
 
+pub fn get_logo_mode(device: &Device) -> Result<LogoMode> {
+    let power = _get_logo_power(device)?;
+    match power {
+        true => _get_logo_mode(device),
+        false => Ok(LogoMode::Off),
+    }
+}
+
 pub fn set_logo_mode(device: &Device, mode: LogoMode) -> Result<()> {
     match mode {
         LogoMode::Off => _set_logo_power(device, false),
@@ -178,31 +186,29 @@ pub fn set_logo_mode(device: &Device, mode: LogoMode) -> Result<()> {
     .map(|_| ())
 }
 
-pub fn print_info(device: &Device) -> Result<()> {
+pub fn get_info(device: &Device) -> Result<String> {
+    use std::fmt::Write;
+    let mut info = String::new();
+
     let (perf_mode, fan_mode) = get_perf_mode(device)?;
-    println!("{: <20} {:?}", "Performance mode:", perf_mode);
+    writeln!(&mut info, "Performance: {:?}", perf_mode)?;
 
     if perf_mode == PerfMode::Balanced {
-        println!("{: <20} {:?}", "Fan mode:", fan_mode);
-        if fan_mode == FanMode::Manual {
-            println!(
-                "{: <20} {:?}",
-                "Fan RPM Zone1:",
+        match fan_mode {
+            FanMode::Auto => writeln!(&mut info, "Fan: {:?}", fan_mode)?,
+            FanMode::Manual => writeln!(
+                &mut info,
+                "Fan: {} RPM",
                 get_fan_rpm(device, FanZone::Zone1)?
-            );
-            println!(
-                "{: <20} {:?}",
-                "Fan RPM Zone2:",
-                get_fan_rpm(device, FanZone::Zone2)?
-            );
+            )?,
         }
     }
 
     if perf_mode == PerfMode::Custom {
         let cpu_boost = get_cpu_boost(device)?;
         let gpu_boost = get_gpu_boost(device)?;
-        println!("{: <20} {:?}", "CPU boost:", cpu_boost);
-        println!("{: <20} {:?}", "GPU boost:", gpu_boost);
+        writeln!(&mut info, "CPU: {:?}", cpu_boost)?;
+        writeln!(&mut info, "GPU: {:?}", gpu_boost)?;
 
         if (cpu_boost == CpuBoost::Boost || cpu_boost == CpuBoost::Overclock)
             && (gpu_boost == GpuBoost::High)
@@ -211,11 +217,7 @@ pub fn print_info(device: &Device) -> Result<()> {
         }
     }
 
-    let logo_power = _get_logo_power(device)?;
-    println!("{: <20} {:?}", "Logo power:", logo_power);
-    if logo_power {
-        println!("{: <20} {:?}", "Logo mode:", _get_logo_mode(device)?);
-    }
+    write!(&mut info, "Logo: {:?}", get_logo_mode(device)?)?;
 
-    Ok(())
+    Ok(info)
 }

@@ -12,3 +12,5 @@ rand = "0.8.5"
 serde = { version = "1.0.197", features = ["derive"] }
 serde-big-array = "0.5.1"
 serde_json = "1.0.114"
+strum = "0.26.1"
+strum_macros = "0.26.1"

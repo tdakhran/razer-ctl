@@ -6,14 +6,14 @@ use anyhow::Result;
 use clap::{Args, Parser, Subcommand};
 use clap_num::maybe_hex;
 
-pub fn create_device(pid: Option<u16>) -> Result<device::Device> {
+fn create_device(pid: Option<u16>) -> Result<device::Device> {
     const RAZER_BLADE_16_2023_PID: u16 = 0x029f;
     device::Device::new(pid.unwrap_or(RAZER_BLADE_16_2023_PID))
 }
 
 #[derive(Parser)]
 #[command(name = "razerctl", version, about)]
-pub struct Razerctl {
+struct Razerctl {
     #[command(subcommand)]
     pub command: RazerCtlCommand,
 
@@ -23,7 +23,7 @@ pub struct Razerctl {
 }
 
 #[derive(Subcommand)]
-pub enum RazerCtlCommand {
+enum RazerCtlCommand {
     /// List discovered Razer devices
     Enumerate,
     /// Get device info
@@ -44,13 +44,13 @@ pub enum RazerCtlCommand {
 }
 
 #[derive(Args)]
-pub struct PerfModeCommand {
+struct PerfModeCommand {
     #[command(subcommand)]
     pub action: PerfModeActionCommand,
 }
 
 #[derive(Subcommand)]
-pub enum PerfModeActionCommand {
+enum PerfModeActionCommand {
     /// Set performance mode
     Mode { perf_mode: types::PerfMode },
     /// Set CPU boost
@@ -60,13 +60,13 @@ pub enum PerfModeActionCommand {
 }
 
 #[derive(Args)]
-pub struct FanCommand {
+struct FanCommand {
     #[command(subcommand)]
     pub subcommand: FanSubcommand,
 }
 
 #[derive(Subcommand)]
-pub enum FanSubcommand {
+enum FanSubcommand {
     /// Set fan mode to auto
     Auto,
     /// Set fan mode to manual
@@ -95,7 +95,7 @@ fn main() -> Result<()> {
         RazerCtlCommand::Enumerate => {
             unreachable!("Enumerate handled above")
         }
-        RazerCtlCommand::Info => command::print_info(&device),
+        RazerCtlCommand::Info => Ok(println!("{}", command::get_info(&device)?)),
         RazerCtlCommand::Cmd { command, args } => command::custom_command(&device, command, &args),
         RazerCtlCommand::Perf(command) => match command.action {
             PerfModeActionCommand::Mode { perf_mode } => command::set_perf_mode(&device, perf_mode),
