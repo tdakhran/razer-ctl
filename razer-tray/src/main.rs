@@ -7,9 +7,7 @@ use librazer::{command, device};
 
 use tao::event_loop::{ControlFlow, EventLoopBuilder};
 use tray_icon::{
-    menu::{
-        AboutMetadata, CheckMenuItem, IsMenuItem, Menu, MenuEvent, PredefinedMenuItem, Submenu,
-    },
+    menu::{CheckMenuItem, IsMenuItem, Menu, MenuEvent, PredefinedMenuItem, Submenu},
     TrayIconBuilder, TrayIconEvent,
 };
 
@@ -385,12 +383,7 @@ impl ProgramState {
 
         // footer
         menu.append(&PredefinedMenuItem::separator())?;
-        menu.append(&PredefinedMenuItem::about(
-            None,
-            Some(AboutMetadata {
-                ..Default::default()
-            }),
-        ))?;
+        menu.append(&PredefinedMenuItem::about(None, Some(Self::about())))?;
         menu.append(&PredefinedMenuItem::quit(None))?;
 
         Ok((menu, event_handlers))
@@ -402,6 +395,22 @@ impl ProgramState {
             event_id
         ))?;
         Ok(*next_state)
+    }
+
+    fn about() -> tray_icon::menu::AboutMetadata {
+        tray_icon::menu::AboutMetadata {
+            name: Some(env!("CARGO_PKG_NAME").into()),
+            version: Some(env!("CARGO_PKG_VERSION").into()),
+            authors: Some(
+                env!("CARGO_PKG_AUTHORS")
+                    .split(';')
+                    .map(|a| a.trim().to_string())
+                    .collect::<Vec<_>>(),
+            ),
+            website: Some(env!("CARGO_PKG_HOMEPAGE").into()),
+            comments: Some(env!("CARGO_PKG_DESCRIPTION").into()),
+            ..Default::default()
+        }
     }
 
     fn get_next_perf_mode(&self) -> DeviceState {
