@@ -7,7 +7,6 @@ mod razer {
     use anyhow::{anyhow, Result};
     use clap::ValueEnum;
 
-    const RAZER_VID: u16 = 0x1532;
     const RAZER_BLADE_16_2023_PID: u16 = 0x029f;
 
     // commands to implement
@@ -112,8 +111,15 @@ mod razer {
     }
 
     impl Device0 {
-        pub fn new() -> Device0 {
-            let device = device::Device::new(RAZER_VID, RAZER_BLADE_16_2023_PID).unwrap();
+        pub fn new(pid: Option<String>) -> Device0 {
+            let pid = match pid {
+                Some(value) => match value {
+                    _ if value.starts_with("0x") => u16::from_str_radix(&value[2..], 16).unwrap(),
+                    _ => u16::from_str_radix(&value, 16).unwrap(),
+                },
+                None => RAZER_BLADE_16_2023_PID,
+            };
+            let device = device::Device::new(pid).unwrap();
             Device0 { device }
         }
 
@@ -237,6 +243,10 @@ mod razer {
             self.send_report(report).map(|_| ())
         }
     }
+
+    pub fn enumerate() -> Result<()> {
+        device::Device::enumerate()
+    }
 }
 
 use anyhow::Result;
@@ -247,10 +257,16 @@ use clap::{Args, Parser, Subcommand};
 pub struct Razerctl {
     #[command(subcommand)]
     pub command: RazerCtlCommand,
+
+    /// PID of the Razer device to use
+    #[arg(short, long)]
+    pub pid: Option<String>,
 }
 
 #[derive(Subcommand)]
 pub enum RazerCtlCommand {
+    /// List all Razer devices
+    Enumerate,
     /// Get or set power mode
     Power(PowerCommand),
     /// Set fan speed
@@ -315,9 +331,11 @@ pub enum FanSubcommand {
 fn main() -> Result<()> {
     let parser = Razerctl::parse();
 
-    let mut laptop = razer::Device0::new();
+    let mut laptop = razer::Device0::new(parser.pid);
 
     match parser.command {
+        RazerCtlCommand::Enumerate => razer::enumerate()?,
+
         RazerCtlCommand::Power(command) => match command.subcommand {
             PowerSubcommand::Get => {
                 println!("{:#?}", laptop.get_power_mode()?);

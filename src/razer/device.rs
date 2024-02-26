@@ -7,9 +7,11 @@ pub struct Device {
 }
 
 impl Device {
-    pub fn new(vid: u16, pid: u16) -> Result<Device> {
+    const RAZER_VID: u16 = 0x1532;
+
+    pub fn new(pid: u16) -> Result<Device> {
         let api = hidapi::HidApi::new().context("Failed to create hid api")?;
-        let device = api.open(vid, pid)?;
+        let device = api.open(Device::RAZER_VID, pid)?;
         Ok(Device { device })
     }
 
@@ -36,5 +38,21 @@ impl Device {
 
         // skip report id byte
         <&[u8] as TryInto<Packet>>::try_into(&response_buf[1..])?.ensure_matches_report(&report)
+    }
+
+    pub fn enumerate() -> Result<()> {
+        let api = hidapi::HidApi::new().context("Failed to create hid api")?;
+        api.device_list()
+            .filter(|info| info.vendor_id() == Device::RAZER_VID)
+            .for_each(|info| {
+                println!(
+                    "RazerDevice {{ vid: 0x{:04x}, pid: 0x{:04x}, manufacturer: {}, product: {} }}",
+                    info.vendor_id(),
+                    info.product_id(),
+                    info.manufacturer_string().unwrap_or_default(),
+                    info.product_string().unwrap_or_default(),
+                )
+            });
+        Ok(())
     }
 }

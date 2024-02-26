@@ -54,6 +54,8 @@ After running the script, we get the table, that says which command correspods t
 | disable max fan speed                 | 070f  |      1 | 00     |        |        |        |
 | custom mode, cpu overclock, gpu high  | 0d07  |      3 | 01     |     01 | 04     |        |
 | custom mode, cpu boost, gpu high      | 0d07  |      3 | 01     |     01 | 03     |        |
+| battery health, 80%                   | 0712  |      1 | d0     |        |        |        |
+| disable battery health                | 0712  |      1 | 50     |        |        |        |
 | enable battery health                 | 0712  |      1 | d0     |        |        |        |
 | decrease keyboard light               | 0303  |      3 | 01     |     05 | 00     |        |
 |                                       | 0303  |      3 | 01     |     05 | 00     |        |
@@ -64,4 +66,3 @@ After running the script, we get the table, that says which command correspods t
 |                                       | 0300  |      3 | 00     |     04 | 01     |        |
 | set lid logo off                      | 0302  |      3 | 00     |     04 | 00     |        |
 |                                       | 0300  |      3 | 00     |     04 | 00     |        |
-

@@ -12,6 +12,7 @@ for (index, annotation) in annotations.iterrows():
     description = annotation[1]
     usb_frames = (raw_data[raw_data[1].astype(int) == time_s])[6]
     row = [description]
+    assert len(usb_frames)
     for frame in usb_frames:
         argc = int(frame[10:12], 16)
         cmd = frame[12:16]
