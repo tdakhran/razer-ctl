@@ -1,7 +1,7 @@
 use anyhow::{bail, Result};
 use clap::ValueEnum;
+use serde::{Deserialize, Serialize};
 use strum_macros::{EnumIter, EnumString};
-use serde::{Serialize, Deserialize};
 
 #[derive(Clone, Copy)]
 pub enum Cluster {
@@ -50,7 +50,9 @@ pub enum GpuBoost {
     High = 2,
 }
 
-#[derive(EnumString, EnumIter, Clone, Copy, Debug, ValueEnum, PartialEq, Serialize, Deserialize)]
+#[derive(
+    EnumString, EnumIter, Clone, Copy, Debug, ValueEnum, PartialEq, Serialize, Deserialize,
+)]
 pub enum LogoMode {
     Off,
     Breathing,

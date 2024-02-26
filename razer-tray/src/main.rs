@@ -33,7 +33,7 @@ struct DeviceState {
 }
 
 impl DeviceState {
-    fn new(device: &device::Device) -> Result<Self> {
+    fn read(device: &device::Device) -> Result<Self> {
         let perf_mode = match command::get_perf_mode(device)? {
             (librazer::types::PerfMode::Silent, _) => PerfMode::Silent,
             (librazer::types::PerfMode::Balanced, librazer::types::FanMode::Auto) => {
@@ -142,17 +142,23 @@ impl DeviceStateDelta<MaxFanSpeedMode> for DeviceState {
 struct ProgramState {
     device_state: DeviceState,
     event_handlers: std::collections::HashMap<String, DeviceState>,
+    menu: Menu,
 }
 
 impl ProgramState {
     fn new(device_state: DeviceState) -> Result<Self> {
+        let (menu, event_handlers) = Self::create_menu_and_handlers(&device_state)?;
         Ok(Self {
             device_state,
-            event_handlers: std::collections::HashMap::new(),
+            event_handlers,
+            menu,
         })
     }
 
-    fn menu(&mut self) -> Result<Menu> {
+    fn create_menu_and_handlers(
+        dstate: &DeviceState,
+    ) -> Result<(Menu, std::collections::HashMap<String, DeviceState>)> {
+        let mut event_handlers = std::collections::HashMap::new();
         let menu = Menu::new();
         // header
 
@@ -162,49 +168,49 @@ impl ProgramState {
         perf_modes.append(&CheckMenuItem::with_id(
             format!("{:?}", PerfMode::Silent),
             "Silent",
-            self.device_state.perf_mode != PerfMode::Silent,
-            self.device_state.perf_mode == PerfMode::Silent,
+            dstate.perf_mode != PerfMode::Silent,
+            dstate.perf_mode == PerfMode::Silent,
             None,
         ))?;
-        self.event_handlers.insert(
+        event_handlers.insert(
             format!("{:?}", PerfMode::Silent),
             DeviceState {
                 perf_mode: PerfMode::Silent,
-                ..self.device_state
+                ..*dstate
             },
         );
         // balanced
         let fan_speeds: Vec<CheckMenuItem> = [CheckMenuItem::with_id(
             "fan_speed:auto",
             "Fan: Auto",
-            self.device_state.perf_mode != PerfMode::Balanced(FanSpeed::Auto),
-            self.device_state.perf_mode == PerfMode::Balanced(FanSpeed::Auto),
+            dstate.perf_mode != PerfMode::Balanced(FanSpeed::Auto),
+            dstate.perf_mode == PerfMode::Balanced(FanSpeed::Auto),
             None,
         )]
         .into_iter()
         .chain((2000..=5000).step_by(500).map(|rpm| {
             let event_id = format!("fan_speed:{}", rpm);
-            self.event_handlers.insert(
+            event_handlers.insert(
                 event_id.clone(),
                 DeviceState {
                     perf_mode: PerfMode::Balanced(FanSpeed::Manual(rpm)),
-                    ..self.device_state
+                    ..*dstate
                 },
             );
             CheckMenuItem::with_id(
                 event_id,
                 format!("Fan: {} RPM", rpm),
-                self.device_state.perf_mode != PerfMode::Balanced(FanSpeed::Manual(rpm)),
-                self.device_state.perf_mode == PerfMode::Balanced(FanSpeed::Manual(rpm)),
+                dstate.perf_mode != PerfMode::Balanced(FanSpeed::Manual(rpm)),
+                dstate.perf_mode == PerfMode::Balanced(FanSpeed::Manual(rpm)),
                 None,
             )
         }))
         .collect();
-        self.event_handlers.insert(
+        event_handlers.insert(
             "fan_speed:auto".to_string(),
             DeviceState {
                 perf_mode: PerfMode::Balanced(FanSpeed::Auto),
-                ..self.device_state
+                ..*dstate
             },
         );
 
@@ -221,10 +227,8 @@ impl ProgramState {
         let cpu_boosts: Vec<CheckMenuItem> = CpuBoost::iter()
             .map(|boost| {
                 let event_id = format!("cpu_boost:{:?}", boost);
-                self.event_handlers
-                    .insert(event_id.clone(), self.device_state.delta(boost));
-                let checked =
-                    matches!(self.device_state.perf_mode, PerfMode::Custom(b, _, _) if b == boost);
+                event_handlers.insert(event_id.clone(), dstate.delta(boost));
+                let checked = matches!(dstate.perf_mode, PerfMode::Custom(b, _, _) if b == boost);
                 CheckMenuItem::with_id(event_id, format!("{:?}", boost), !checked, checked, None)
             })
             .collect();
@@ -232,10 +236,8 @@ impl ProgramState {
         let gpu_boosts: Vec<CheckMenuItem> = GpuBoost::iter()
             .map(|boost| {
                 let event_id = format!("gpu_boost:{:?}", boost);
-                self.event_handlers
-                    .insert(event_id.clone(), self.device_state.delta(boost));
-                let checked =
-                    matches!(self.device_state.perf_mode, PerfMode::Custom(_, b, _) if b == boost);
+                event_handlers.insert(event_id.clone(), dstate.delta(boost));
+                let checked = matches!(dstate.perf_mode, PerfMode::Custom(_, b, _) if b == boost);
                 CheckMenuItem::with_id(event_id, format!("{:?}", boost), !checked, checked, None)
             })
             .collect();
@@ -243,10 +245,8 @@ impl ProgramState {
         let max_fan_speed_mode: Vec<CheckMenuItem> = MaxFanSpeedMode::iter()
             .map(|mode| {
                 let event_id = format!("max_fan_speed_mode:{:?}", mode);
-                self.event_handlers
-                    .insert(event_id.clone(), self.device_state.delta(mode));
-                let checked =
-                    matches!(self.device_state.perf_mode, PerfMode::Custom(_, _, m) if m == mode);
+                event_handlers.insert(event_id.clone(), dstate.delta(mode));
+                let checked = matches!(dstate.perf_mode, PerfMode::Custom(_, _, m) if m == mode);
                 CheckMenuItem::with_id(
                     event_id,
                     format!("Max Fan: {:?}", mode),
@@ -279,18 +279,18 @@ impl ProgramState {
         let modes = LogoMode::iter()
             .map(|mode| {
                 let event_id = format!("logo_mode:{:?}", mode);
-                self.event_handlers.insert(
+                event_handlers.insert(
                     event_id.clone(),
                     DeviceState {
                         logo_mode: mode,
-                        ..self.device_state
+                        ..*dstate
                     },
                 );
                 CheckMenuItem::with_id(
                     event_id,
                     format!("{:?}", mode),
-                    self.device_state.logo_mode != mode,
-                    self.device_state.logo_mode == mode,
+                    dstate.logo_mode != mode,
+                    dstate.logo_mode == mode,
                     None,
                 )
             })
@@ -315,74 +315,28 @@ impl ProgramState {
         ))?;
         menu.append(&PredefinedMenuItem::quit(None))?;
 
-        Ok(menu)
+        Ok((menu, event_handlers))
     }
 
-    fn handle_event(
-        &mut self,
-        tray_icon: &mut tray_icon::TrayIcon,
-        device: &device::Device,
-        event_id: &str,
-    ) -> Result<()> {
-        let next_device_state = self.event_handlers.get(event_id).ok_or(anyhow::anyhow!(
+    fn handle_event(&self, event_id: &str) -> Result<DeviceState> {
+        let next_state = self.event_handlers.get(event_id).ok_or(anyhow::anyhow!(
             "No event handler found for event_id: {}",
             event_id
         ))?;
-
-        if *next_device_state != self.device_state {
-            self.update_state(tray_icon, device, *next_device_state)?;
-        }
-
-        Ok(())
+        Ok(*next_state)
     }
 
-    fn update_state(
-        &mut self,
-        tray_icon: &mut tray_icon::TrayIcon,
-        device: &device::Device,
-        next_device_state: DeviceState,
-    ) -> Result<()> {
-        self.device_state = next_device_state;
-        self.event_handlers.clear();
-        self.device_state.apply(device)?;
-        tray_icon.set_menu(Some(Box::new(self.menu()?)));
-        tray_icon.set_tooltip(Some(self.tooltip()?))?;
-        tray_icon.set_icon(Some(self.icon()))?;
-        Ok(confy::store("razer-tray", None, self.device_state)?)
-    }
-
-    fn set_next_perf_mode(
-        &mut self,
-        tray_icon: &mut tray_icon::TrayIcon,
-        device: &device::Device,
-    ) -> Result<()> {
-        self.update_state(
-            tray_icon,
-            device,
-            DeviceState {
-                perf_mode: match self.device_state.perf_mode {
-                    PerfMode::Silent => PerfMode::Balanced(FanSpeed::Auto),
-                    PerfMode::Balanced(..) => {
-                        PerfMode::Custom(CpuBoost::Boost, GpuBoost::High, MaxFanSpeedMode::Disable)
-                    }
-                    PerfMode::Custom(..) => PerfMode::Silent,
-                },
-                ..self.device_state
+    fn get_next_perf_mode(&self) -> DeviceState {
+        DeviceState {
+            perf_mode: match self.device_state.perf_mode {
+                PerfMode::Silent => PerfMode::Balanced(FanSpeed::Auto),
+                PerfMode::Balanced(..) => {
+                    PerfMode::Custom(CpuBoost::Boost, GpuBoost::High, MaxFanSpeedMode::Disable)
+                }
+                PerfMode::Custom(..) => PerfMode::Silent,
             },
-        )
-    }
-
-    fn synchronize(
-        &mut self,
-        tray_icon: &mut tray_icon::TrayIcon,
-        device: &device::Device,
-    ) -> Result<()> {
-        let next_device_state = DeviceState::new(device)?;
-        if next_device_state != self.device_state {
-            eprintln!("Device state changed externally {:?}", next_device_state);
-            self.update_state(tray_icon, device, self.device_state)?;
+            ..self.device_state
         }
-        Ok(())
     }
 
     fn tooltip(&self) -> Result<String> {
@@ -433,47 +387,56 @@ impl ProgramState {
     }
 }
 
+fn update(
+    tray_icon: &mut tray_icon::TrayIcon,
+    new_device_state: DeviceState,
+    device: &device::Device,
+) -> Result<ProgramState> {
+    let new_program_state = ProgramState::new(new_device_state)?;
+    tray_icon.set_icon(Some(new_program_state.icon()))?;
+    tray_icon.set_tooltip(Some(new_program_state.tooltip()?))?;
+    tray_icon.set_menu(Some(Box::new(new_program_state.menu.clone())));
+    new_device_state.apply(device)?;
+
+    confy::store("razer-tray", None, new_device_state)?;
+    Ok(new_program_state)
+}
+
 fn main() -> Result<()> {
     const RAZER_BLADE_16_2023_PID: u16 = 0x029f;
     let device = device::Device::new(RAZER_BLADE_16_2023_PID)?;
 
     let mut state = ProgramState::new(confy::load("razer-tray", None)?)?;
 
-    let mut tray_icon = TrayIconBuilder::new()
-        .with_menu(Box::new(state.menu()?))
-        .with_tooltip(state.tooltip()?)
-        .with_icon(state.icon())
-        .build()?;
+    let mut tray_icon = TrayIconBuilder::new().build()?;
+    state = update(&mut tray_icon, state.device_state, &device)?;
 
     let menu_channel = MenuEvent::receiver();
     let tray_channel = TrayIconEvent::receiver();
-
     let event_loop = EventLoopBuilder::new().build();
 
-    let mut idle_counter = 0;
+    let mut last_device_state_check_timestamp = std::time::Instant::now();
 
     event_loop.run(move |_event, _, control_flow| {
-        *control_flow = ControlFlow::WaitUntil(
-            std::time::Instant::now() + std::time::Duration::from_millis(1000),
-        );
+        let now = std::time::Instant::now();
+        *control_flow = ControlFlow::WaitUntil(now + std::time::Duration::from_millis(500));
 
         if let Err(e) = (|| -> Result<()> {
             if let Ok(event) = menu_channel.try_recv() {
-                state.handle_event(&mut tray_icon, &device, event.id.as_ref())?;
+                state = update(&mut tray_icon, state.handle_event(event.id.as_ref())?, &device)?;
             }
-            if let Ok(event) = tray_channel.try_recv() {
-                if event.click_type == tray_icon::ClickType::Left {
-                    state.set_next_perf_mode(&mut tray_icon, &device)?;
-                }
+
+            if matches!(tray_channel.try_recv(), Ok(event) if event.click_type == tray_icon::ClickType::Left) {
+                state = update(&mut tray_icon, state.get_next_perf_mode(), &device)?;
             }
-            if matches!(
-                _event,
-                tao::event::Event::NewEvents(tao::event::StartCause::ResumeTimeReached { .. })
-            ) {
-                idle_counter += 1;
-                if idle_counter % 10 == 0 {
-                    idle_counter = 0;
-                    state.synchronize(&mut tray_icon, &device)?;
+
+            if now >  last_device_state_check_timestamp + std::time::Duration::from_secs(10)
+            {
+                last_device_state_check_timestamp = now;
+                let active_device_state = DeviceState::read(&device)?;
+                if active_device_state != state.device_state {
+                    eprintln!("Device state changed to {:?}, overriding", active_device_state);
+                    state = update(&mut tray_icon, state.device_state, &device)?;
                 }
             }
 

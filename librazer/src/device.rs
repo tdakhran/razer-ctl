@@ -13,6 +13,7 @@ impl Device {
     pub fn new(pid: u16) -> Result<Device> {
         let api = hidapi::HidApi::new().context("Failed to create hid api")?;
         let device = api.open(Device::RAZER_VID, pid)?;
+        device.send_feature_report(&[0, 0])?; // razer does it, not sure why
         Ok(Device { device })
     }
 
@@ -33,7 +34,7 @@ impl Device {
             )
             .context("Failed to send feature report")?;
 
-        thread::sleep(time::Duration::from_micros(1000));
+        thread::sleep(time::Duration::from_micros(2000));
         if response_buf.len() != self.device.get_feature_report(&mut response_buf)? {
             return Err(anyhow!("Response size != {}", response_buf.len()));
         }

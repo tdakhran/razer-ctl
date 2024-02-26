@@ -139,27 +139,31 @@ pub fn custom_command(device: &Device, command: u16, args: &[u8]) -> Result<()> 
     Ok(())
 }
 
-fn _set_logo_power(device: &Device, on: bool) -> Result<Packet> {
-    _send_command(device, 0x0300, &[0, 4, on as u8])
+fn _set_logo_power(device: &Device, mode: LogoMode) -> Result<Packet> {
+    match mode {
+        LogoMode::Off => _send_command(device, 0x0300, &[1, 4, 0]),
+        LogoMode::Static | LogoMode::Breathing => _send_command(device, 0x0300, &[1, 4, 1]),
+    }
+}
+
+fn _set_logo_mode(device: &Device, mode: LogoMode) -> Result<Packet> {
+    match mode {
+        LogoMode::Static => _send_command(device, 0x0302, &[1, 4, 0]),
+        LogoMode::Breathing => _send_command(device, 0x0302, &[1, 4, 2]),
+        _ => bail!("Invalid logo mode"),
+    }
 }
 
 fn _get_logo_power(device: &Device) -> Result<bool> {
-    match device.send(Packet::new(0x0380, &[0, 4, 0]))?.get_args()[2] {
+    match device.send(Packet::new(0x0380, &[1, 4, 0]))?.get_args()[2] {
         0 => Ok(false),
         1 => Ok(true),
         _ => bail!("Invalid logo power state"),
     }
 }
 
-fn _set_logo_mode(device: &Device, mode: LogoMode) -> Result<Packet> {
-    match mode {
-        LogoMode::Static | LogoMode::Off => _send_command(device, 0x0302, &[0, 4, 0]),
-        LogoMode::Breathing => _send_command(device, 0x0302, &[0, 4, 2]),
-    }
-}
-
 fn _get_logo_mode(device: &Device) -> Result<LogoMode> {
-    match device.send(Packet::new(0x0382, &[0, 4, 0]))?.get_args()[2] {
+    match device.send(Packet::new(0x0382, &[1, 4, 0]))?.get_args()[2] {
         0 => Ok(LogoMode::Static),
         2 => Ok(LogoMode::Breathing),
         _ => bail!("Invalid logo power state"),
@@ -175,8 +179,10 @@ pub fn get_logo_mode(device: &Device) -> Result<LogoMode> {
 }
 
 pub fn set_logo_mode(device: &Device, mode: LogoMode) -> Result<()> {
-    _set_logo_mode(device, mode)?;
-    _set_logo_power(device, mode != LogoMode::Off)?;
+    if mode != LogoMode::Off {
+        _set_logo_mode(device, mode)?;
+    }
+    _set_logo_power(device, mode)?;
     Ok(())
 }
 
