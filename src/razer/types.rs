@@ -48,6 +48,13 @@ pub enum GpuBoost {
     High = 2,
 }
 
+#[derive(Clone, Copy, Debug, ValueEnum, PartialEq)]
+pub enum LogoMode {
+    Off,
+    Breathing,
+    Static,
+}
+
 impl TryFrom<u8> for GpuBoost {
     type Error = anyhow::Error;
 

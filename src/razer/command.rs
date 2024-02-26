@@ -1,7 +1,7 @@
 use crate::razer::device::Device;
 use crate::razer::packet::Packet;
 use crate::razer::types::{
-    Cluster, CpuBoost, FanMode, FanZone, GpuBoost, MaxFanSpeedMode, PerfMode,
+    Cluster, CpuBoost, FanMode, FanZone, GpuBoost, LogoMode, MaxFanSpeedMode, PerfMode,
 };
 
 use anyhow::{bail, ensure, Result};
@@ -131,6 +131,53 @@ pub fn set_fan_mode(device: &Device, mode: FanMode) -> Result<()> {
     _set_perf_mode(device, PerfMode::Balanced, mode)
 }
 
+pub fn custom_command(device: &Device, command: u16, args: &[u8]) -> Result<()> {
+    let report = Packet::new(command, args);
+    println!("Report   {:?}", report);
+    let response = device.send(report)?;
+    println!("Response {:?}", response);
+    Ok(())
+}
+
+fn _set_logo_power(device: &Device, on: bool) -> Result<Packet> {
+    _send_command(device, 0x0300, &[0, 4, on as u8])
+}
+
+fn _get_logo_power(device: &Device) -> Result<bool> {
+    match device.send(Packet::new(0x0380, &[0, 4, 0]))?.get_args()[2] {
+        0 => Ok(false),
+        1 => Ok(true),
+        _ => bail!("Invalid logo power state"),
+    }
+}
+
+fn _set_logo_mode(device: &Device, mode: LogoMode) -> Result<Packet> {
+    match mode {
+        LogoMode::Static => _send_command(device, 0x0302, &[0, 4, 0]),
+        LogoMode::Breathing => _send_command(device, 0x0302, &[0, 4, 2]),
+        _ => bail!("Invalid logo mode"),
+    }
+}
+
+fn _get_logo_mode(device: &Device) -> Result<LogoMode> {
+    match device.send(Packet::new(0x0382, &[0, 4, 0]))?.get_args()[2] {
+        0 => Ok(LogoMode::Static),
+        2 => Ok(LogoMode::Breathing),
+        _ => bail!("Invalid logo power state"),
+    }
+}
+
+pub fn set_logo_mode(device: &Device, mode: LogoMode) -> Result<()> {
+    match mode {
+        LogoMode::Off => _set_logo_power(device, false),
+        _ => {
+            _set_logo_power(device, true)?;
+            _set_logo_mode(device, mode)
+        }
+    }
+    .map(|_| ())
+}
+
 pub fn print_info(device: &Device) -> Result<()> {
     let (perf_mode, fan_mode) = get_perf_mode(device)?;
     println!("{: <20} {:?}", "Performance mode:", perf_mode);
@@ -162,6 +209,12 @@ pub fn print_info(device: &Device) -> Result<()> {
         {
             // TODO: getter for max fan speed mode
         }
+    }
+
+    let logo_power = _get_logo_power(device)?;
+    println!("{: <20} {:?}", "Logo power:", logo_power);
+    if logo_power {
+        println!("{: <20} {:?}", "Logo mode:", _get_logo_mode(device)?);
     }
 
     Ok(())

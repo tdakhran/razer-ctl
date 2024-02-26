@@ -6,17 +6,11 @@ use razer::types;
 
 use anyhow::Result;
 use clap::{Args, Parser, Subcommand};
+use clap_num::maybe_hex;
 
-pub fn create_device(pid: Option<String>) -> Result<device::Device> {
+pub fn create_device(pid: Option<u16>) -> Result<device::Device> {
     const RAZER_BLADE_16_2023_PID: u16 = 0x029f;
-    let pid = match pid {
-        Some(value) => match value {
-            _ if value.starts_with("0x") => u16::from_str_radix(&value[2..], 16).unwrap(),
-            _ => u16::from_str_radix(&value, 16).unwrap(),
-        },
-        None => RAZER_BLADE_16_2023_PID,
-    };
-    device::Device::new(pid)
+    device::Device::new(pid.unwrap_or(RAZER_BLADE_16_2023_PID))
 }
 
 #[derive(Parser)]
@@ -26,18 +20,29 @@ pub struct Razerctl {
     pub command: RazerCtlCommand,
 
     /// PID of the Razer device to use
-    #[arg(short, long)]
-    pub pid: Option<String>,
+    #[clap(short, long, value_parser=maybe_hex::<u16>)]
+    pub pid: Option<u16>,
 }
 
 #[derive(Subcommand)]
 pub enum RazerCtlCommand {
     /// List discovered Razer devices
     Enumerate,
+    /// Get device info
+    Info,
     /// Control performance modes
     Perf(PerfModeCommand),
     /// Control fan
     Fan(FanCommand),
+    /// Run Custom Command
+    Cmd {
+        #[clap(value_parser=maybe_hex::<u16>)]
+        command: u16,
+        #[clap(value_parser=maybe_hex::<u8>)]
+        args: Vec<u8>,
+    },
+    /// Control Logo
+    Logo { logo_mode: types::LogoMode },
 }
 
 #[derive(Args)]
@@ -48,8 +53,6 @@ pub struct PerfModeCommand {
 
 #[derive(Subcommand)]
 pub enum PerfModeActionCommand {
-    /// Performance mode info
-    Info,
     /// Set performance mode
     Mode { perf_mode: types::PerfMode },
     /// Set CPU boost
@@ -94,8 +97,9 @@ fn main() -> Result<()> {
         RazerCtlCommand::Enumerate => {
             unreachable!("Enumerate handled above")
         }
+        RazerCtlCommand::Info => command::print_info(&device),
+        RazerCtlCommand::Cmd { command, args } => command::custom_command(&device, command, &args),
         RazerCtlCommand::Perf(command) => match command.action {
-            PerfModeActionCommand::Info => command::print_info(&device),
             PerfModeActionCommand::Mode { perf_mode } => command::set_perf_mode(&device, perf_mode),
             PerfModeActionCommand::Cpu { cpu_boost } => command::set_cpu_boost(&device, cpu_boost),
             PerfModeActionCommand::Gpu { gpu_boost } => command::set_gpu_boost(&device, gpu_boost),
@@ -108,5 +112,6 @@ fn main() -> Result<()> {
                 command::set_max_fan_speed_mode(&device, max_fan_speed_mode)
             }
         },
+        RazerCtlCommand::Logo { logo_mode } => command::set_logo_mode(&device, logo_mode),
     }
 }
