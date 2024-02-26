@@ -36,9 +36,12 @@ Special thanks to
 
 **Q**: *Does it work on Linux?*
 
-**A**: I didn't test, but nothing prevents it, all libraries are cross platform.
+**A**: I didn't test, but nothing prevents it, all libraries are cross-platform.
+
+**Q**: *Why Windows Defender tells me it is a Trojan*
+
+**A**: Read https://github.com/rust-lang/rust/issues/88297, and make sure recent Intelligence Updates are installed for Microsoft Defender.
 
 **Q**: *What's the easiest way to try?*
 
-**A**: Download `razer-tray.exe` from [Releases](release/) and launch it in the cmd or PowerShell or directly inside WSL2 shell.
-
+**A**: Download `razer-tray.exe` from [Releases](https://github.com/tdakhran/razer-ctl/releases) and launch it.
