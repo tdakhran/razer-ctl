@@ -1,4 +1,4 @@
-use crate::razer::Packet;
+use crate::razer::packet::Packet;
 use anyhow::{anyhow, Context, Result};
 use std::{thread, time};
 
@@ -18,8 +18,9 @@ impl Device {
     pub fn send(&self, report: Packet) -> Result<Packet> {
         // extra byte for report id
         let mut response_buf: Vec<u8> = vec![0x00; 1 + std::mem::size_of::<Packet>()];
+        //println!("Report {:?}", report);
 
-        thread::sleep(time::Duration::from_millis(1));
+        thread::sleep(time::Duration::from_millis(2));
         self.device
             .send_feature_report(
                 [0_u8; 1] // report id
@@ -31,13 +32,15 @@ impl Device {
             )
             .context("Failed to send feature report")?;
 
-        thread::sleep(time::Duration::from_millis(1));
+        thread::sleep(time::Duration::from_millis(2));
         if response_buf.len() != self.device.get_feature_report(&mut response_buf)? {
             return Err(anyhow!("Response size != {}", response_buf.len()));
         }
 
         // skip report id byte
-        <&[u8] as TryInto<Packet>>::try_into(&response_buf[1..])?.ensure_matches_report(&report)
+        let response = <&[u8] as TryInto<Packet>>::try_into(&response_buf[1..])?;
+        //println!("Response {:?}", response);
+        response.ensure_matches_report(&report)
     }
 
     pub fn enumerate() -> Result<()> {
