@@ -1,8 +1,6 @@
-mod razer;
-
-use razer::command;
-use razer::device;
-use razer::types;
+use librazer::command;
+use librazer::device;
+use librazer::types;
 
 use anyhow::Result;
 use clap::{Args, Parser, Subcommand};

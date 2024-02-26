@@ -1,6 +1,6 @@
-use crate::razer::device::Device;
-use crate::razer::packet::Packet;
-use crate::razer::types::{
+use crate::device::Device;
+use crate::packet::Packet;
+use crate::types::{
     Cluster, CpuBoost, FanMode, FanZone, GpuBoost, LogoMode, MaxFanSpeedMode, PerfMode,
 };
 

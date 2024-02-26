@@ -1,4 +1,5 @@
-use crate::razer::packet::Packet;
+use crate::packet::Packet;
+
 use anyhow::{anyhow, Context, Result};
 use std::{thread, time};
 
