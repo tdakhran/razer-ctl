@@ -9,6 +9,7 @@ description = "A tray icon for controlling Razer Blade 16"
 
 [dependencies]
 anyhow = "1.0.80"
+chrono = "0.4.34"
 confy = "0.6.0"
 image = "0.24.9"
 librazer = { path = "../librazer" }

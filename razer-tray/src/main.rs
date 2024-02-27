@@ -490,6 +490,12 @@ fn update(
     new_device_state.apply(device)?;
 
     confy::store("razer-tray", None, new_device_state)?;
+
+    println!(
+        "{}: state updated to\n{:?}",
+        chrono::Local::now().format("%Y-%m-%dT%H:%M:%S"),
+        new_device_state
+    );
     Ok(new_program_state)
 }
 
@@ -498,7 +504,8 @@ fn main() -> Result<()> {
     let device = device::Device::new(RAZER_BLADE_16_2023_PID)?;
 
     println!(
-        "Loading config file {}",
+        "{}: Loading config file {}",
+        chrono::Local::now().format("%Y-%m-%dT%H:%M:%S"),
         confy::get_configuration_file_path("razer-tray", None)?.display()
     );
     let mut state = ProgramState::new(confy::load("razer-tray", None)?)?;
@@ -530,7 +537,9 @@ fn main() -> Result<()> {
                 last_device_state_check_timestamp = now;
                 let active_device_state = DeviceState::read(&device)?;
                 if active_device_state != state.device_state {
-                    eprintln!("Device state changed from\n{:?} to\n{:?}\noverriding...", state.device_state, active_device_state);
+                    eprintln!("{}: overriding externally modified state\n{:?},",
+                              chrono::Local::now().format("%Y-%m-%dT%H:%M:%S"),
+                              active_device_state);
                     state = update(&mut tray_icon, state.device_state, &device)?;
                 }
             }
