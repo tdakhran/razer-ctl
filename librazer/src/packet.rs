@@ -28,39 +28,6 @@ enum CommandStatus {
 }
 
 impl Packet {
-    pub fn new2(command_class: u8, command_id: u8, data_size: u8) -> Packet {
-        Packet {
-            status: CommandStatus::New as u8,
-            id: rand::thread_rng().gen(),
-            remaining_packets: 0x0000,
-            protocol_type: 0x00,
-            data_size,
-            command_class,
-            command_id,
-            args: [0x00; 80],
-            crc: 0x00,
-            reserved: 0x00,
-        }
-    }
-
-    pub fn new3(command_class: u8, command_id: u8, args: &[u8]) -> Packet {
-        let mut args_buffer = [0x00; 80];
-        args_buffer[..args.len()].copy_from_slice(args);
-
-        Packet {
-            status: CommandStatus::New as u8,
-            id: rand::thread_rng().gen(),
-            remaining_packets: 0x0000,
-            protocol_type: 0x00,
-            data_size: args.len() as u8,
-            command_class,
-            command_id,
-            args: args_buffer,
-            crc: 0x00,
-            reserved: 0x00,
-        }
-    }
-
     pub fn new(command: u16, args: &[u8]) -> Packet {
         let mut args_buffer = [0x00; 80];
         args_buffer[..args.len()].copy_from_slice(args);
