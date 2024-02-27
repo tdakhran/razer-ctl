@@ -1,3 +1,4 @@
+#![windows_subsystem = "windows"]
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
