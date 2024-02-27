@@ -509,7 +509,7 @@ fn main() -> Result<()> {
         chrono::Local::now().format("%Y-%m-%dT%H:%M:%S"),
         confy::get_configuration_file_path("razer-tray", None)?.display()
     );
-    let mut state = ProgramState::new(confy::load("razer-tray", None)?)?;
+    let mut state = ProgramState::new(confy::load("razer-tray", None).unwrap_or_default())?;
 
     let mut tray_icon = TrayIconBuilder::new().build()?;
     state = update(&mut tray_icon, state.device_state, &device)?;
