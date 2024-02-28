@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, ensure, Result};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_big_array::BigArray;
@@ -55,30 +55,28 @@ impl Packet {
     }
 
     pub fn ensure_matches_report(self, report: &Packet) -> Result<Self> {
-        if (
-            report.remaining_packets,
-            report.command_class,
-            report.command_id,
-            report.id,
-        ) != (
-            self.remaining_packets,
-            self.command_class,
-            self.command_id,
-            self.id,
-        ) {
-            return Err(anyhow!("Response does not match the report"));
-        }
+        ensure!(
+            (report.command_class, report.command_id, report.id)
+                == (self.command_class, self.command_id, self.id),
+            "Response does not match the report"
+        );
 
-        if self.status == CommandStatus::NotSupported as u8 {
-            return Err(anyhow!("Command not supported"));
-        }
+        ensure!(
+            (self.command_class, self.command_id) == (0x07, 0x92) /* 0x0792 (bho) has special handling */
+                || self.remaining_packets == report.remaining_packets,
+            "Response command does not match the report"
+        );
 
-        if self.status != CommandStatus::Successful as u8 {
-            return Err(anyhow!(
-                "Command failed with unknown status: {:02X?}",
-                self.status
-            ));
-        }
+        ensure!(
+            self.status != CommandStatus::NotSupported as u8,
+            "Command not supported"
+        );
+
+        ensure!(
+            self.status == CommandStatus::Successful as u8,
+            "Command failed with unknown status: {:02X?}",
+            self.status
+        );
 
         Ok(self)
     }
@@ -94,9 +92,11 @@ impl TryFrom<&[u8]> for Packet {
     type Error = anyhow::Error;
 
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
-        if data.len() != std::mem::size_of::<Packet>() {
-            return Err(anyhow!("Invalid raw data size"));
-        }
+        ensure!(
+            data.len() == std::mem::size_of::<Packet>(),
+            "Invalid raw data size"
+        );
+
         Ok(bincode::deserialize::<Packet>(data)?)
     }
 }

@@ -1,7 +1,8 @@
 use librazer::command;
 use librazer::device;
 use librazer::types::{
-    CpuBoost, FanMode, FanZone, GpuBoost, LightsAlwaysOn, LogoMode, MaxFanSpeedMode, PerfMode,
+    BatteryCare, CpuBoost, FanMode, FanZone, GpuBoost, LightsAlwaysOn, LogoMode, MaxFanSpeedMode,
+    PerfMode,
 };
 
 use anyhow::Result;
@@ -50,10 +51,15 @@ pub fn get_info(device: &device::Device) -> Result<String> {
         "Brightness: {}",
         command::get_keyboard_brightness(device)?
     )?;
-    write!(
+    writeln!(
         &mut info,
         "Lights always on: {:?}",
         command::get_lights_always_on(device)?
+    )?;
+    write!(
+        &mut info,
+        "Battery care: {:?}",
+        command::get_battery_care(device)?
     )?;
 
     Ok(info)
@@ -93,6 +99,8 @@ enum RazerCtlCommand {
     Backlight { brightness: u8 },
     /// Lights always on
     LightOn { always_on: LightsAlwaysOn },
+    /// Battery Care
+    BatteryCare { battery_care: BatteryCare },
 }
 
 #[derive(Args)]
@@ -164,8 +172,9 @@ fn main() -> Result<()> {
         RazerCtlCommand::Backlight { brightness } => {
             command::set_keyboard_brightness(&device, brightness)
         }
-        RazerCtlCommand::LightOn {
-            always_on: lights_always_on,
-        } => command::set_lights_always_on(&device, lights_always_on),
+        RazerCtlCommand::LightOn { always_on } => command::set_lights_always_on(&device, always_on),
+        RazerCtlCommand::BatteryCare { battery_care } => {
+            command::set_battery_care(&device, battery_care)
+        }
     }
 }

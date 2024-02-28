@@ -3,7 +3,7 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 
-use librazer::types::{CpuBoost, GpuBoost, LightsAlwaysOn, LogoMode, MaxFanSpeedMode};
+use librazer::types::{BatteryCare, CpuBoost, GpuBoost, LightsAlwaysOn, LogoMode, MaxFanSpeedMode};
 use librazer::{command, device};
 
 use tao::event_loop::{ControlFlow, EventLoopBuilder};
@@ -36,6 +36,7 @@ struct LightsMode {
 struct DeviceState {
     perf_mode: PerfMode,
     lights_mode: LightsMode,
+    battery_care: BatteryCare,
 }
 
 impl DeviceState {
@@ -62,9 +63,12 @@ impl DeviceState {
             always_on: command::get_lights_always_on(device)?,
         };
 
+        let battery_care = command::get_battery_care(device)?;
+
         Ok(Self {
             perf_mode,
             lights_mode,
+            battery_care,
         })
     }
 
@@ -94,7 +98,8 @@ impl DeviceState {
         }?;
 
         command::set_keyboard_brightness(device, self.lights_mode.keyboard_brightness)?;
-        command::set_lights_always_on(device, self.lights_mode.always_on)
+        command::set_lights_always_on(device, self.lights_mode.always_on)?;
+        command::set_battery_care(device, self.battery_care)
     }
 
     fn perf_delta(
@@ -131,6 +136,7 @@ impl Default for DeviceState {
                 keyboard_brightness: 0,
                 always_on: LightsAlwaysOn::Disable,
             },
+            battery_care: BatteryCare::Disable,
         }
     }
 }
@@ -260,20 +266,25 @@ impl ProgramState {
             })
             .collect();
 
-        let max_fan_speed_mode: Vec<CheckMenuItem> = MaxFanSpeedMode::iter()
-            .map(|mode| {
-                let event_id = format!("max_fan_speed_mode:{:?}", mode);
-                event_handlers.insert(event_id.clone(), dstate.delta(mode));
-                let checked = matches!(dstate.perf_mode, PerfMode::Custom(_, _, m) if m == mode);
-                CheckMenuItem::with_id(
-                    event_id,
-                    format!("Max Fan: {:?}", mode),
-                    !checked,
-                    checked,
-                    None,
-                )
-            })
-            .collect();
+        let max_fan_speed_mode = &[CheckMenuItem::with_id(
+            "max_fan_speed_mode",
+            "Max Fan Speed",
+            true,
+            matches!(
+                dstate.perf_mode,
+                PerfMode::Custom(_, _, MaxFanSpeedMode::Enable)
+            ),
+            None,
+        )];
+        event_handlers.insert(
+            "max_fan_speed_mode".to_string(),
+            match dstate.perf_mode {
+                PerfMode::Custom(_, _, MaxFanSpeedMode::Enable) => {
+                    dstate.delta(MaxFanSpeedMode::Disable)
+                }
+                _ => dstate.delta(MaxFanSpeedMode::Enable),
+            },
+        );
 
         let separator = PredefinedMenuItem::separator();
 
@@ -382,6 +393,28 @@ impl ProgramState {
                 .collect::<Vec<_>>(),
         )?)?;
 
+        // battery health optimizer
+        menu.append_items(&[
+            &PredefinedMenuItem::separator(),
+            &CheckMenuItem::with_id(
+                "bho",
+                "Battery Health Optimizer",
+                true,
+                dstate.battery_care == BatteryCare::Enable,
+                None,
+            ),
+        ])?;
+        event_handlers.insert(
+            "bho".to_string(),
+            DeviceState {
+                battery_care: match dstate.battery_care {
+                    BatteryCare::Enable => BatteryCare::Disable,
+                    BatteryCare::Disable => BatteryCare::Enable,
+                },
+                ..*dstate
+            },
+        );
+
         // footer
         menu.append(&PredefinedMenuItem::separator())?;
         menu.append(&PredefinedMenuItem::about(None, Some(Self::about())))?;
@@ -430,22 +463,23 @@ impl ProgramState {
     fn tooltip(&self) -> Result<String> {
         use std::fmt::Write;
         let mut info = String::new();
+        let mut status = String::new();
 
         match self.device_state.perf_mode {
-            PerfMode::Silent => writeln!(&mut info, "Perf: Silent")?,
+            PerfMode::Silent => writeln!(&mut info, "Silent")?,
             PerfMode::Balanced(FanSpeed::Auto) => {
-                writeln!(&mut info, "Perf: Balanced")?;
-                writeln!(&mut info, "Fan: Auto")?
+                writeln!(&mut info, "Balanced (Auto)")?;
             }
             PerfMode::Balanced(FanSpeed::Manual(rpm)) => {
-                writeln!(&mut info, "Perf: Balanced")?;
-                writeln!(&mut info, "Fan: {} RPM", rpm)?
+                writeln!(&mut info, "Balanced {}", rpm)?;
             }
             PerfMode::Custom(cpu_boost, gpu_boost, max_fan_speed) => {
-                writeln!(&mut info, "Perf: Custom")?;
+                writeln!(&mut info, "Custom",)?;
+                if max_fan_speed == MaxFanSpeedMode::Enable {
+                    status.push('💨');
+                }
                 writeln!(&mut info, "CPU: {:?}", cpu_boost)?;
                 writeln!(&mut info, "GPU: {:?}", gpu_boost)?;
-                writeln!(&mut info, "Max Fan: {:?}", max_fan_speed)?;
             }
         }
 
@@ -455,7 +489,23 @@ impl ProgramState {
             self.device_state.lights_mode.logo_mode
         )?;
 
-        Ok(info.trim().to_string())
+        if self.device_state.lights_mode.keyboard_brightness > 0 {
+            writeln!(
+                &mut info,
+                "🔆: {:?}",
+                self.device_state.lights_mode.keyboard_brightness
+            )?;
+        }
+
+        if self.device_state.lights_mode.always_on == LightsAlwaysOn::Enable {
+            status.push('💡');
+        }
+
+        if self.device_state.battery_care == BatteryCare::Enable {
+            status.push('🔋');
+        }
+
+        Ok((info.to_string() + &status).trim_end().to_string())
     }
 
     fn icon(&self) -> tray_icon::Icon {

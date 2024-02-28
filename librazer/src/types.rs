@@ -65,6 +65,12 @@ pub enum LightsAlwaysOn {
     Disable = 0x00,
 }
 
+#[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub enum BatteryCare {
+    Disable = 0x50,
+    Enable = 0xd0,
+}
+
 impl TryFrom<u8> for GpuBoost {
     type Error = anyhow::Error;
 
@@ -126,6 +132,18 @@ impl TryFrom<u8> for LightsAlwaysOn {
             0 => Ok(LightsAlwaysOn::Disable),
             3 => Ok(LightsAlwaysOn::Enable),
             _ => bail!("Failed to convert {} to LightsAlwaysOn", value),
+        }
+    }
+}
+
+impl TryFrom<u8> for BatteryCare {
+    type Error = anyhow::Error;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0x50 => Ok(BatteryCare::Disable),
+            0xd0 => Ok(BatteryCare::Enable),
+            _ => bail!("Failed to convert {} to BatteryCare", value),
         }
     }
 }

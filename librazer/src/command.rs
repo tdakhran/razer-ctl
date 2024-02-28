@@ -1,8 +1,8 @@
 use crate::device::Device;
 use crate::packet::Packet;
 use crate::types::{
-    Cluster, CpuBoost, FanMode, FanZone, GpuBoost, LightsAlwaysOn, LogoMode, MaxFanSpeedMode,
-    PerfMode,
+    BatteryCare, Cluster, CpuBoost, FanMode, FanZone, GpuBoost, LightsAlwaysOn, LogoMode,
+    MaxFanSpeedMode, PerfMode,
 };
 
 use anyhow::{bail, ensure, Result};
@@ -210,6 +210,19 @@ pub fn set_lights_always_on(device: &Device, lights_always_on: LightsAlwaysOn) -
     let args = &[lights_always_on as u8, 0];
     ensure!(device
         .send(Packet::new(0x0004, args))?
+        .get_args()
+        .starts_with(args));
+    Ok(())
+}
+
+pub fn get_battery_care(device: &Device) -> Result<BatteryCare> {
+    device.send(Packet::new(0x0792, &[0]))?.get_args()[0].try_into()
+}
+
+pub fn set_battery_care(device: &Device, mode: BatteryCare) -> Result<()> {
+    let args = &[mode as u8];
+    ensure!(device
+        .send(Packet::new(0x0712, args))?
         .get_args()
         .starts_with(args));
     Ok(())
