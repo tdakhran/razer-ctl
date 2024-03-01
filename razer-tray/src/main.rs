@@ -583,6 +583,17 @@ fn init_logging_to_file() -> Result<()> {
     Ok(())
 }
 
+fn init(tray_icon: &mut tray_icon::TrayIcon, device: &device::Device) -> Result<ProgramState> {
+    log::info!(
+        "loading config file {}",
+        confy::get_configuration_file_path(PKG_NAME, None)?.display()
+    );
+    let config = confy::load(PKG_NAME, None).unwrap_or_default();
+    let state = ProgramState::new(config)?;
+
+    update(tray_icon, state.device_state, device)
+}
+
 fn main() -> Result<()> {
     init_logging_to_file()?;
     log::info!("{0} starting {1} {0}", "==".repeat(20), PKG_NAME);
@@ -590,14 +601,9 @@ fn main() -> Result<()> {
     const RAZER_BLADE_16_2023_PID: u16 = 0x029f;
     let device = device::Device::new(RAZER_BLADE_16_2023_PID)?;
 
-    log::info!(
-        "loading config file {}",
-        confy::get_configuration_file_path(PKG_NAME, None)?.display()
-    );
-    let mut state = ProgramState::new(confy::load(PKG_NAME, None).unwrap_or_default())?;
-
     let mut tray_icon = TrayIconBuilder::new().build()?;
-    state = update(&mut tray_icon, state.device_state, &device)?;
+
+    let mut state = init(&mut tray_icon, &device)?;
 
     let menu_channel = MenuEvent::receiver();
     let tray_channel = TrayIconEvent::receiver();
@@ -605,7 +611,7 @@ fn main() -> Result<()> {
 
     let mut last_device_state_check_timestamp = std::time::Instant::now();
 
-    event_loop.run(move |_event, _, control_flow| {
+    event_loop.run(move |_, _, control_flow| {
         let now = std::time::Instant::now();
         *control_flow = ControlFlow::WaitUntil(now + std::time::Duration::from_millis(1000));
 
@@ -618,7 +624,7 @@ fn main() -> Result<()> {
                 state = update(&mut tray_icon, state.get_next_perf_mode(), &device)?;
             }
 
-            if now >  last_device_state_check_timestamp + std::time::Duration::from_secs(30)
+            if now > last_device_state_check_timestamp + std::time::Duration::from_secs(20)
             {
                 last_device_state_check_timestamp = now;
                 let active_device_state = DeviceState::read(&device)?;
@@ -631,8 +637,14 @@ fn main() -> Result<()> {
 
             Ok(())
         })() {
-            log::error!("failed with error: {:?}", e);
-            *control_flow = ControlFlow::ExitWithCode(1);
+            log::error!("trying to recover from: {:?}", e);
+            match init(&mut tray_icon, &device) {
+                Ok(new_state) => state = new_state,
+                Err(e) => {
+                    log::error!("failed to recover: {:?}", e);
+                    *control_flow = ControlFlow::ExitWithCode(1)
+                }
+            }
         }
     })
 }
