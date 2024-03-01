@@ -147,3 +147,15 @@ impl TryFrom<u8> for BatteryCare {
         }
     }
 }
+
+impl TryFrom<u8> for MaxFanSpeedMode {
+    type Error = anyhow::Error;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0x02 => Ok(MaxFanSpeedMode::Enable),
+            0x00 => Ok(MaxFanSpeedMode::Disable),
+            _ => bail!("Failed to convert {} to MaxFanSpeedMode", value),
+        }
+    }
+}

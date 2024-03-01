@@ -62,8 +62,9 @@ impl Packet {
         );
 
         ensure!(
-            (self.command_class, self.command_id) == (0x07, 0x92) /* 0x0792 (bho) has special handling */
-                || self.remaining_packets == report.remaining_packets,
+            self.remaining_packets == report.remaining_packets
+            || (self.command_class, self.command_id) == (0x07, 0x92) /* 0x0792 (bho) has special handling */
+            || (self.command_class, self.command_id) == (0x07, 0x8f), /* 0x078f max fan speed mode has special handling */
             "Response command does not match the report"
         );
 

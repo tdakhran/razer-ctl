@@ -41,7 +41,11 @@ pub fn get_info(device: &device::Device) -> Result<String> {
         if (cpu_boost == CpuBoost::Boost || cpu_boost == CpuBoost::Overclock)
             && (gpu_boost == GpuBoost::High)
         {
-            // TODO: getter for max fan speed mode
+            writeln!(
+                &mut info,
+                "Max Fan Speed: {:?}",
+                command::get_max_fan_speed_mode(device)?
+            )?;
         }
     }
 

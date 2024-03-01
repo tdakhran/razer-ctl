@@ -55,7 +55,8 @@ impl DeviceState {
             (librazer::types::PerfMode::Custom, _) => {
                 let cpu_boost = command::get_cpu_boost(device)?;
                 let gpu_boost = command::get_gpu_boost(device)?;
-                PerfMode::Custom(cpu_boost, gpu_boost, MaxFanSpeedMode::Disable)
+                let max_fan_speed = command::get_max_fan_speed_mode(device)?;
+                PerfMode::Custom(cpu_boost, gpu_boost, max_fan_speed)
             }
         };
 

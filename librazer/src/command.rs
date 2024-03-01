@@ -123,6 +123,10 @@ pub fn set_max_fan_speed_mode(device: &Device, mode: MaxFanSpeedMode) -> Result<
     _send_command(device, 0x070f, &[mode as u8]).map(|_| ())
 }
 
+pub fn get_max_fan_speed_mode(device: &Device) -> Result<MaxFanSpeedMode> {
+    device.send(Packet::new(0x078f, &[0]))?.get_args()[0].try_into()
+}
+
 pub fn set_fan_mode(device: &Device, mode: FanMode) -> Result<()> {
     ensure!(
         get_perf_mode(device)?.0 == PerfMode::Balanced,
