@@ -12,6 +12,8 @@ use tray_icon::{
     TrayIconBuilder, TrayIconEvent,
 };
 
+const PKG_NAME: &str = env!("CARGO_PKG_NAME");
+
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 enum FanSpeed {
     Auto,
@@ -433,7 +435,7 @@ impl ProgramState {
 
     fn about() -> tray_icon::menu::AboutMetadata {
         tray_icon::menu::AboutMetadata {
-            name: Some(env!("CARGO_PKG_NAME").into()),
+            name: Some(PKG_NAME.into()),
             version: Some(env!("CARGO_PKG_VERSION").into()),
             authors: Some(
                 env!("CARGO_PKG_AUTHORS")
@@ -441,7 +443,11 @@ impl ProgramState {
                     .map(|a| a.trim().to_string())
                     .collect::<Vec<_>>(),
             ),
-            website: Some(env!("CARGO_PKG_HOMEPAGE").into()),
+            website: Some(format!(
+                "{}\nLog: {}",
+                env!("CARGO_PKG_HOMEPAGE"),
+                get_logging_file_path().display()
+            )),
             comments: Some(env!("CARGO_PKG_DESCRIPTION").into()),
             ..Default::default()
         }
@@ -540,26 +546,55 @@ fn update(
     tray_icon.set_menu(Some(Box::new(new_program_state.menu.clone())));
     new_device_state.apply(device)?;
 
-    confy::store("razer-tray", None, new_device_state)?;
+    confy::store(PKG_NAME, None, new_device_state)?;
 
-    println!(
-        "{}: state updated to\n{:?}",
-        chrono::Local::now().format("%Y-%m-%dT%H:%M:%S"),
-        new_device_state
-    );
+    log::info!("state updated to {:?}", new_device_state);
     Ok(new_program_state)
 }
 
+fn get_logging_file_path() -> std::path::PathBuf {
+    std::env::temp_dir().join(format!("{}.log", PKG_NAME))
+}
+
+fn init_logging_to_file() -> Result<()> {
+    use log4rs::append::rolling_file::policy::compound::{
+        roll::delete::DeleteRoller, trigger::size::SizeTrigger, CompoundPolicy,
+    };
+    let policy = CompoundPolicy::new(
+        Box::new(SizeTrigger::new(50 << 20)),
+        Box::new(DeleteRoller::new()),
+    );
+
+    let logfile = log4rs::append::rolling_file::RollingFileAppender::builder()
+        .encoder(Box::new(log4rs::encode::pattern::PatternEncoder::new(
+            "{h({d(%Y-%m-%d %H:%M:%S)(local)} - {l}: {m}{n})}",
+        )))
+        .build(get_logging_file_path(), Box::new(policy))?;
+
+    let config = log4rs::config::Config::builder()
+        .appender(log4rs::config::Appender::builder().build("logfile", Box::new(logfile)))
+        .build(
+            log4rs::config::Root::builder()
+                .appender("logfile")
+                .build(log::LevelFilter::Trace),
+        )?;
+
+    log4rs::init_config(config)?;
+    Ok(())
+}
+
 fn main() -> Result<()> {
+    init_logging_to_file()?;
+    log::info!("{0} starting {1} {0}", "==".repeat(20), PKG_NAME);
+
     const RAZER_BLADE_16_2023_PID: u16 = 0x029f;
     let device = device::Device::new(RAZER_BLADE_16_2023_PID)?;
 
-    println!(
-        "{}: Loading config file {}",
-        chrono::Local::now().format("%Y-%m-%dT%H:%M:%S"),
-        confy::get_configuration_file_path("razer-tray", None)?.display()
+    log::info!(
+        "loading config file {}",
+        confy::get_configuration_file_path(PKG_NAME, None)?.display()
     );
-    let mut state = ProgramState::new(confy::load("razer-tray", None).unwrap_or_default())?;
+    let mut state = ProgramState::new(confy::load(PKG_NAME, None).unwrap_or_default())?;
 
     let mut tray_icon = TrayIconBuilder::new().build()?;
     state = update(&mut tray_icon, state.device_state, &device)?;
@@ -588,8 +623,7 @@ fn main() -> Result<()> {
                 last_device_state_check_timestamp = now;
                 let active_device_state = DeviceState::read(&device)?;
                 if active_device_state != state.device_state {
-                    eprintln!("{}: overriding externally modified state\n{:?},",
-                              chrono::Local::now().format("%Y-%m-%dT%H:%M:%S"),
+                    log::warn!("overriding externally modified state {:?},",
                               active_device_state);
                     state = update(&mut tray_icon, state.device_state, &device)?;
                 }
@@ -597,7 +631,7 @@ fn main() -> Result<()> {
 
             Ok(())
         })() {
-            eprintln!("Failed with error: {:?}", e);
+            log::error!("failed with error: {:?}", e);
             *control_flow = ControlFlow::ExitWithCode(1);
         }
     })

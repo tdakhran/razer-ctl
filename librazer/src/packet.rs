@@ -1,4 +1,4 @@
-use anyhow::{anyhow, ensure, Result};
+use anyhow::{ensure, Result};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_big_array::BigArray;
