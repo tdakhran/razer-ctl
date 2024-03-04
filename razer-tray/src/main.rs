@@ -599,8 +599,24 @@ fn main() -> Result<()> {
     init_logging_to_file()?;
     log::info!("{0} starting {1} {0}", "==".repeat(20), PKG_NAME);
 
-    const RAZER_BLADE_16_2023_PID: u16 = 0x029f;
-    let device = device::Device::new(RAZER_BLADE_16_2023_PID)?;
+    let device = match device::Device::detect() {
+        Ok(d) => {
+            log::info!(
+                "detected device: {} (0x{:04X})",
+                d.info().name,
+                d.info().pid
+            );
+            d
+        }
+        Err(e) => {
+            log::error!("{:?}", e);
+            native_dialog::MessageDialog::new()
+                .set_type(native_dialog::MessageType::Error)
+                .set_text(format!("{:?}", e).as_str())
+                .show_alert()?;
+            return Err(e);
+        }
+    };
 
     let mut tray_icon = TrayIconBuilder::new().build()?;
 

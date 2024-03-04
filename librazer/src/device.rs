@@ -1,20 +1,45 @@
 use crate::packet::Packet;
 
 use anyhow::{anyhow, Context, Result};
+use itertools::Itertools;
 use std::{thread, time};
+
+pub struct DeviceInfo {
+    pub name: &'static str,
+    pub pid: u16,
+}
+
+pub const SUPPORTED: &[DeviceInfo] = &[
+    DeviceInfo {
+        name: "Razer Blade 16 2023",
+        pid: 0x029f,
+    },
+    DeviceInfo {
+        name: "Razer Blade 14 2023",
+        pid: 0x029d,
+    },
+];
 
 pub struct Device {
     device: hidapi::HidDevice,
+    info: DeviceInfo,
 }
 
 impl Device {
     const RAZER_VID: u16 = 0x1532;
 
-    pub fn new(pid: u16) -> Result<Device> {
+    pub fn info(&self) -> &DeviceInfo {
+        &self.info
+    }
+
+    pub fn new(pid: u16, name: &'static str) -> Result<Device> {
         let api = hidapi::HidApi::new().context("Failed to create hid api")?;
         let device = api.open(Device::RAZER_VID, pid)?;
         device.send_feature_report(&[0, 0])?; // razer does it, not sure why
-        Ok(Device { device })
+        Ok(Device {
+            device,
+            info: DeviceInfo { name, pid },
+        })
     }
 
     pub fn send(&self, report: Packet) -> Result<Packet> {
@@ -45,19 +70,27 @@ impl Device {
         response.ensure_matches_report(&report)
     }
 
-    pub fn enumerate() -> Result<()> {
+    pub fn enumerate() -> Result<std::vec::Vec<DeviceInfo>> {
         let api = hidapi::HidApi::new().context("Failed to create hid api")?;
-        api.device_list()
+        Ok(api
+            .device_list()
             .filter(|info| info.vendor_id() == Device::RAZER_VID)
-            .for_each(|info| {
-                println!(
-                    "RazerDevice {{ vid: 0x{:04x}, pid: 0x{:04x}, manufacturer: {}, product: {} }}",
-                    info.vendor_id(),
-                    info.product_id(),
-                    info.manufacturer_string().unwrap_or_default(),
-                    info.product_string().unwrap_or_default(),
-                )
-            });
-        Ok(())
+            .map(|info| DeviceInfo {
+                name: "",
+                pid: info.product_id(),
+            })
+            .unique_by(|info| info.pid)
+            .collect())
+    }
+
+    pub fn detect() -> Result<Device> {
+        for discovered in Device::enumerate()? {
+            for supported in SUPPORTED {
+                if supported.pid == discovered.pid {
+                    return Device::new(supported.pid, supported.name);
+                }
+            }
+        }
+        anyhow::bail!("Device is not supported")
     }
 }
