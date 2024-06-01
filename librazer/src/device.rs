@@ -74,9 +74,14 @@ impl Device {
         Ok(api
             .device_list()
             .filter(|info| info.vendor_id() == Device::RAZER_VID)
-            .map(|info| DeviceInfo {
-                name: "",
-                pid: info.product_id(),
+            .map(|info| {
+                let dev = api.open_path(info.path()).expect("Failed to open device");
+                let res = dev.send_feature_report(&[0]);
+                println!("Probing {:?}  and result is {:?}", info.path(), res);
+                DeviceInfo {
+                    name: "",
+                    pid: info.product_id(),
+                }
             })
             .unique_by(|info| info.pid)
             .collect())
