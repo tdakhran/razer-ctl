@@ -143,9 +143,13 @@ fn main() -> Result<()> {
     let parser = Razerctl::parse();
 
     if let RazerCtlCommand::Enumerate = parser.command {
-        device::Device::enumerate()?
-            .iter()
-            .for_each(|info| println!("RazerDevice {{ pid: 0x{:04x} }}", info.pid));
+        device::Device::enumerate()?.iter().for_each(|info| {
+            println!(
+                "RazerDevice {{ pid: 0x{:04x}, path: {} }}",
+                info.pid,
+                info.path.as_ref().unwrap()
+            )
+        });
         return Ok(());
     }
 

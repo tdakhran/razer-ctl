@@ -1,22 +1,24 @@
 use crate::packet::Packet;
 
 use anyhow::{anyhow, Context, Result};
-use itertools::Itertools;
 use std::{thread, time};
 
 pub struct DeviceInfo {
     pub name: &'static str,
     pub pid: u16,
+    pub path: Option<String>,
 }
 
 pub const SUPPORTED: &[DeviceInfo] = &[
     DeviceInfo {
         name: "Razer Blade 16 2023",
         pid: 0x029f,
+        path: None,
     },
     DeviceInfo {
         name: "Razer Blade 14 2023",
         pid: 0x029d,
+        path: None,
     },
 ];
 
@@ -34,11 +36,29 @@ impl Device {
 
     pub fn new(pid: u16, name: &'static str) -> Result<Device> {
         let api = hidapi::HidApi::new().context("Failed to create hid api")?;
-        let device = api.open(Device::RAZER_VID, pid)?;
-        Ok(Device {
-            device,
-            info: DeviceInfo { name, pid },
-        })
+
+        // there are multiple devices with the same pid, pick first that support feature report
+        for info in api
+            .device_list()
+            .filter(|info| (info.vendor_id(), info.product_id()) == (Device::RAZER_VID, pid))
+        {
+            let path = info.path();
+            let device = api.open_path(path)?;
+            if device.send_feature_report(&[0, 0]).is_ok() {
+                return Ok(Device {
+                    device,
+                    info: DeviceInfo {
+                        name,
+                        pid,
+                        path: Some(path.to_str().unwrap().to_string()),
+                    },
+                });
+            }
+        }
+        anyhow::bail!(
+            "No device with pid 0x{:04x} and feature report support found",
+            pid
+        )
     }
 
     pub fn send(&self, report: Packet) -> Result<Packet> {
@@ -74,16 +94,11 @@ impl Device {
         Ok(api
             .device_list()
             .filter(|info| info.vendor_id() == Device::RAZER_VID)
-            .map(|info| {
-                let dev = api.open_path(info.path()).expect("Failed to open device");
-                let res = dev.send_feature_report(&[0]);
-                println!("Probing {:?}  and result is {:?}", info.path(), res);
-                DeviceInfo {
-                    name: "",
-                    pid: info.product_id(),
-                }
+            .map(|info| DeviceInfo {
+                name: "",
+                pid: info.product_id(),
+                path: Some(info.path().to_str().unwrap().to_string()),
             })
-            .unique_by(|info| info.pid)
             .collect())
     }
 
