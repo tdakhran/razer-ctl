@@ -53,11 +53,28 @@ pub fn set_perf_mode(device: &Device, perf_mode: PerfMode) -> Result<()> {
 }
 
 pub fn get_perf_mode(device: &Device) -> Result<(PerfMode, FanMode)> {
-    let response = device.send(Packet::new(0x0d82, &[0, 0x01, 0, 0]))?;
-    Ok((
-        PerfMode::try_from(response.get_args()[2])?,
-        FanMode::try_from(response.get_args()[3])?,
-    ))
+    let [r1, r2]: [Result<(PerfMode, FanMode)>; 2] = [1, 2].map(|zone| {
+        let response = device.send(Packet::new(0x0d82, &[0, zone, 0, 0]))?;
+        Ok((
+            PerfMode::try_from(response.get_args()[2])?,
+            FanMode::try_from(response.get_args()[3])?,
+        ))
+    });
+
+    ensure!(
+        r1.is_ok() && r2.is_ok(),
+        "Failed to get performance mode and fan mode: {:?} {:?}",
+        r1,
+        r2
+    );
+
+    let r1 = r1?;
+    let r2 = r2?;
+
+    //let r1 = r1?;
+    ensure!(r1 == r2, "Modes do not match: {:?} {:?}", r1, r2);
+
+    Ok(r1)
 }
 
 pub fn set_cpu_boost(device: &Device, boost: CpuBoost) -> Result<()> {
