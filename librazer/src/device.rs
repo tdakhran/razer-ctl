@@ -35,7 +35,6 @@ impl Device {
     pub fn new(pid: u16, name: &'static str) -> Result<Device> {
         let api = hidapi::HidApi::new().context("Failed to create hid api")?;
         let device = api.open(Device::RAZER_VID, pid)?;
-        device.send_feature_report(&[0, 0])?; // razer does it, not sure why
         Ok(Device {
             device,
             info: DeviceInfo { name, pid },
