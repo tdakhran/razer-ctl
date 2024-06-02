@@ -1105,15 +1105,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "itertools"
-version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba291022dbbd398a455acf126c1e341954079855bc60dfdda641363bd6922569"
-dependencies = [
- "either",
-]
-
-[[package]]
 name = "itoa"
 version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1230,7 +1221,6 @@ dependencies = [
  "bincode",
  "clap",
  "hidapi",
- "itertools 0.12.1",
  "rand",
  "serde",
  "serde-big-array",
@@ -2276,7 +2266,7 @@ version = "5.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c73a36bc44e3039f51fbee93e39f41225f6b17b380eb70cc2aab942df06b34dd"
 dependencies = [
- "itertools 0.11.0",
+ "itertools",
  "nom",
 ]
 
