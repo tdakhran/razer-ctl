@@ -12,7 +12,9 @@ use tray_icon::{
     TrayIconBuilder, TrayIconEvent,
 };
 
+#[cfg(target_os = "windows")]
 use windows::Win32::Foundation::HANDLE;
+#[cfg(target_os = "windows")]
 use windows::Win32::System::Threading::{GetCurrentProcess, SetPriorityClass, SetProcessInformation, ProcessPowerThrottling, IDLE_PRIORITY_CLASS, PROCESS_POWER_THROTTLING_CURRENT_VERSION, PROCESS_POWER_THROTTLING_EXECUTION_SPEED, PROCESS_POWER_THROTTLING_STATE};
 
 const PKG_NAME: &str = env!("CARGO_PKG_NAME");
@@ -598,6 +600,7 @@ fn init(tray_icon: &mut tray_icon::TrayIcon, device: &device::Device) -> Result<
     update(tray_icon, state.device_state, device)
 }
 
+#[cfg(target_os = "windows")]
 fn efficiency_mode() {
     unsafe {
         let handle: HANDLE = GetCurrentProcess();
@@ -622,7 +625,9 @@ fn main() -> Result<()> {
     init_logging_to_file()?;
     log::info!("{0} starting {1} {0}", "==".repeat(20), PKG_NAME);
     
-    efficiency_mode();
+    if cfg!(target_os = "windows") {
+        efficiency_mode();
+    }
 
     let device = match device::Device::detect() {
         Ok(d) => {
