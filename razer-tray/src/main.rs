@@ -622,9 +622,8 @@ fn efficiency_mode() {
 }
 
 fn main() -> Result<()> {
-    if cfg!(target_os = "windows") {
-        efficiency_mode();
-    }
+    #[cfg(target_os = "windows")]
+    efficiency_mode();
 
     init_logging_to_file()?;
     log::info!("{0} starting {1} {0}", "==".repeat(20), PKG_NAME);
