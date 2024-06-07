@@ -12,6 +12,11 @@ use tray_icon::{
     TrayIconBuilder, TrayIconEvent,
 };
 
+#[cfg(target_os = "windows")]
+use windows::Win32::Foundation::HANDLE;
+#[cfg(target_os = "windows")]
+use windows::Win32::System::Threading::{GetCurrentProcess, SetPriorityClass, SetProcessInformation, ProcessPowerThrottling, IDLE_PRIORITY_CLASS, PROCESS_POWER_THROTTLING_CURRENT_VERSION, PROCESS_POWER_THROTTLING_EXECUTION_SPEED, PROCESS_POWER_THROTTLING_STATE};
+
 const PKG_NAME: &str = env!("CARGO_PKG_NAME");
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -595,7 +600,31 @@ fn init(tray_icon: &mut tray_icon::TrayIcon, device: &device::Device) -> Result<
     update(tray_icon, state.device_state, device)
 }
 
+#[cfg(target_os = "windows")]
+fn efficiency_mode() {
+    unsafe {
+        let handle: HANDLE = GetCurrentProcess();
+
+        let _ = SetPriorityClass(handle, IDLE_PRIORITY_CLASS);
+
+        let power_throttling = PROCESS_POWER_THROTTLING_STATE {
+            Version: PROCESS_POWER_THROTTLING_CURRENT_VERSION,
+            ControlMask: PROCESS_POWER_THROTTLING_EXECUTION_SPEED,
+            StateMask: PROCESS_POWER_THROTTLING_EXECUTION_SPEED,
+        };
+        let _ = SetProcessInformation(
+            handle,
+            ProcessPowerThrottling,
+            &power_throttling as *const _ as *mut _,
+            std::mem::size_of::<PROCESS_POWER_THROTTLING_STATE>() as u32,
+        );
+    }
+}
+
 fn main() -> Result<()> {
+    #[cfg(target_os = "windows")]
+    efficiency_mode();
+
     init_logging_to_file()?;
     log::info!("{0} starting {1} {0}", "==".repeat(20), PKG_NAME);
 
