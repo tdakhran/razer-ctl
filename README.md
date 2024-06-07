@@ -1,7 +1,7 @@
-# Razer Blade 16 control utility
+# Razer Blade control utility
 
 For those of you who
-* own a Razer Blade 16 2023
+* own a Razer Blade 16 2023 or Razor Blade 14 2023
 * use Windows 11
 * Razer Synapse 3 (including the Beta) makes your eyes bleed
 * baffled by why your fans are always at full-throttle

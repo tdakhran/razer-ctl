@@ -9,11 +9,6 @@ use anyhow::Result;
 use clap::{Args, Parser, Subcommand};
 use clap_num::maybe_hex;
 
-fn create_device(pid: Option<u16>) -> Result<device::Device> {
-    const RAZER_BLADE_16_2023_PID: u16 = 0x029f;
-    device::Device::new(pid.unwrap_or(RAZER_BLADE_16_2023_PID))
-}
-
 pub fn get_info(device: &device::Device) -> Result<String> {
     use std::fmt::Write;
     let mut info = String::new();
@@ -148,10 +143,20 @@ fn main() -> Result<()> {
     let parser = Razerctl::parse();
 
     if let RazerCtlCommand::Enumerate = parser.command {
-        return device::Device::enumerate();
+        device::Device::enumerate()?.iter().for_each(|info| {
+            println!(
+                "RazerDevice {{ pid: 0x{:04x}, path: {} }}",
+                info.pid,
+                info.path.as_ref().unwrap()
+            )
+        });
+        return Ok(());
     }
 
-    let device = create_device(parser.pid)?;
+    let device = match parser.pid {
+        Some(pid) => device::Device::new(pid, ""),
+        _ => device::Device::detect(),
+    }?;
 
     match parser.command {
         RazerCtlCommand::Enumerate => {

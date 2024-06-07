@@ -1,3 +1,7 @@
 [workspace]
 resolver = "2"
 members = [ "librazer", "razer-cli", "razer-tray"]
+
+[profile.release]
+strip = true
+lto = true

@@ -7,7 +7,7 @@ edition = "2021"
 anyhow = "1.0.80"
 bincode = "1.3.3"
 clap = { version = "4.5.1", features = ["derive"] }
-hidapi = "2.6.0"
+hidapi = {version = "2.6.1", features = ["windows-native"]}
 rand = "0.8.5"
 serde = { version = "1.0.197", features = ["derive"] }
 serde-big-array = "0.5.1"
