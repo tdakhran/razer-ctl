@@ -143,18 +143,28 @@ fn main() -> Result<()> {
     let parser = Razerctl::parse();
 
     if let RazerCtlCommand::Enumerate = parser.command {
-        device::Device::enumerate()?.iter().for_each(|info| {
-            println!(
-                "RazerDevice {{ pid: 0x{:04x}, path: {} }}",
-                info.pid,
-                info.path.as_ref().unwrap()
-            )
-        });
+        let (pid_list, model_number_prefix) = device::Device::enumerate()?;
+
+        println!("Model: {}", model_number_prefix);
+        println!(
+            "Supported: {}",
+            device::SUPPORTED
+                .iter()
+                .any(|supported| model_number_prefix == supported.model_number_prefix)
+        );
+        println!("PID: {:#06x?}", pid_list);
         return Ok(());
     }
 
     let device = match parser.pid {
-        Some(pid) => device::Device::new(pid, ""),
+        Some(pid) => {
+            println!("Using PID: 0x{:06x?}. Enabling all features.", pid);
+            device::Device::new(device::Descriptor {
+                model_number_prefix: "Unknown",
+                name: "Unknown",
+                pid,
+            })
+        }
         _ => device::Device::detect(),
     }?;
 
