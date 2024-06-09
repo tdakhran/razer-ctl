@@ -20,13 +20,13 @@ jobs:
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.3
       - name: Build for Linux
+        run: cargo build --verbose --release
       - name: Install Windows toolchain
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           override: false
           target: x86_64-pc-windows-gnu
-        run: cargo build --verbose --release
       - name: Build for Windows
         run: cargo build --verbose --release --target x86_64-pc-windows-gnu
       - name: Run sccache stat for check
