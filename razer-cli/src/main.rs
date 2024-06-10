@@ -264,7 +264,10 @@ fn main() -> Result<()> {
 
     // TODO: find a better way to detect auto mode in advance
     let is_auto_mode = std::env::args_os().nth(1) == Some("auto".into());
-    let device = is_auto_mode.then_some(device::Device::detect()?);
+    let device = match is_auto_mode {
+        true => Some(device::Device::detect()?),
+        _ => None,
+    };
     let feature_list = match device {
         Some(ref device) => device.info.features,
         _ => feature::ALL_FEATURES,
