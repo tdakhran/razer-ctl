@@ -207,7 +207,7 @@ fn enumerate() -> Result<()> {
     println!("Model: {}", model_number_prefix);
     println!(
         "Supported: {}",
-        device::SUPPORTED
+        librazer::descriptor::SUPPORTED
             .iter()
             .any(|supported| model_number_prefix == supported.model_number_prefix)
     );
@@ -290,7 +290,7 @@ fn main() -> Result<()> {
             handle(&device.unwrap(), submatches, &cli_features)?;
         }
         Some(("manual", submatches)) => {
-            let device = device::Device::new(device::Descriptor {
+            let device = device::Device::new(librazer::descriptor::Descriptor {
                 model_number_prefix: "Unknown",
                 name: "Unknown",
                 pid: *submatches.get_one::<u16>("pid").unwrap(),
