@@ -26,8 +26,10 @@ jobs:
 
       - name: Install target for Windows
         run: rustup target add x86_64-pc-windows-gnu
+      - name: Run fmt
+        run: cargo fmt --all --check
       - name: Run clippy
-        run: cargo clippy --all-targets --all-features
+        run: cargo clippy --all-targets --all-features -- -Dwarnings
       - name: Build for Windows
         run: cargo build --verbose --release --target x86_64-pc-windows-gnu
       - name: Build for Linux

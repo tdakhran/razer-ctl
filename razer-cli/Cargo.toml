@@ -7,6 +7,6 @@ edition = "2021"
 
 [dependencies]
 librazer = { path = "../librazer" }
-clap = { version = "4.5.1", features = ["derive"] }
+clap = { version = "4.5.1", features = ["cargo"] }
 clap-num = "1.1.1"
 anyhow = "1.0.80"

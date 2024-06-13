@@ -15,7 +15,11 @@ use tray_icon::{
 #[cfg(target_os = "windows")]
 use windows::Win32::Foundation::HANDLE;
 #[cfg(target_os = "windows")]
-use windows::Win32::System::Threading::{GetCurrentProcess, SetPriorityClass, SetProcessInformation, ProcessPowerThrottling, IDLE_PRIORITY_CLASS, PROCESS_POWER_THROTTLING_CURRENT_VERSION, PROCESS_POWER_THROTTLING_EXECUTION_SPEED, PROCESS_POWER_THROTTLING_STATE};
+use windows::Win32::System::Threading::{
+    GetCurrentProcess, ProcessPowerThrottling, SetPriorityClass, SetProcessInformation,
+    IDLE_PRIORITY_CLASS, PROCESS_POWER_THROTTLING_CURRENT_VERSION,
+    PROCESS_POWER_THROTTLING_EXECUTION_SPEED, PROCESS_POWER_THROTTLING_STATE,
+};
 
 const PKG_NAME: &str = env!("CARGO_PKG_NAME");
 
