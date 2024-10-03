@@ -101,7 +101,7 @@ impl Device {
 
         match SUPPORTED
             .iter()
-            .find(|supported| model_number_prefix == supported.model_number_prefix)
+            .find(|supported| model_number_prefix.starts_with(supported.model_number_prefix))
         {
             Some(supported) => Device::new(supported.clone()),
             None => anyhow::bail!(

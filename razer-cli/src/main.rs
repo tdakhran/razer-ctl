@@ -209,7 +209,7 @@ fn enumerate() -> Result<()> {
         "Supported: {}",
         librazer::descriptor::SUPPORTED
             .iter()
-            .any(|supported| model_number_prefix == supported.model_number_prefix)
+            .any(|supported| model_number_prefix.starts_with(supported.model_number_prefix))
     );
     println!("PID: {:#06x?}", pid_list);
     Ok(())
