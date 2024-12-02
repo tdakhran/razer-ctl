@@ -1,3 +1,6 @@
+> [!IMPORTANT]  
+> I no longer own a Razer laptop, feel free to reach out if interested in maintaining the project.
+
 # Razer Blade control utility
 
 For those of you who
