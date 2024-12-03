@@ -11,7 +11,7 @@ pub struct Descriptor {
 
 pub const SUPPORTED: &[Descriptor] = &[
     Descriptor {
-        model_number_prefix: "RZ09-0483T",
+        model_number_prefix: "RZ09-0483",
         name: "Razer Blade 16” (2023) Black",
         pid: 0x029f,
         features: &[
@@ -24,7 +24,7 @@ pub const SUPPORTED: &[Descriptor] = &[
         ],
     },
     Descriptor {
-        model_number_prefix: "RZ09-0482X",
+        model_number_prefix: "RZ09-0482",
         name: "Razer Blade 14” (2023) Mercury",
         pid: 0x029d,
         features: &[
